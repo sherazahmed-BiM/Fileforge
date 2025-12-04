@@ -1,0 +1,3 @@
+converter_api: uv run uvicorn apps.converter_api.main:app --host 0.0.0.0 --port 19000 --reload
+worker: uv run celery -A packages.common.core.celery_app worker --loglevel=info --pool=solo
+frontend: cd apps/frontend && npm run dev

@@ -1,0 +1,41 @@
+version: "3.9"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: fileforge-postgres
+    environment:
+      POSTGRES_USER: fileforge
+      POSTGRES_PASSWORD: fileforge
+      POSTGRES_DB: fileforge
+    ports:
+      - "15433:5432"
+    volumes:
+      - fileforge_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fileforge -d fileforge"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis for Celery broker and result backend
+  redis:
+    image: redis:7-alpine
+    container_name: fileforge-redis
+    ports:
+      - "16380:6379"
+    volumes:
+      - fileforge_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+volumes:
+  fileforge_postgres_data:
+  fileforge_redis_data:

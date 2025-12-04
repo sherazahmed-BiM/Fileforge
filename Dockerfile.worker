@@ -1,0 +1,67 @@
+# FileForge Celery Worker Dockerfile
+# Multi-stage build for smaller image size
+
+FROM python:3.11-slim as builder
+
+# Install system dependencies for unstructured and document parsing
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    libmagic1 \
+    poppler-utils \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    libreoffice \
+    pandoc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+# Set working directory
+WORKDIR /app
+
+# Copy dependency files
+COPY pyproject.toml uv.lock* ./
+
+# Install dependencies
+RUN uv sync --frozen --no-dev
+
+# Production stage
+FROM python:3.11-slim
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    libmagic1 \
+    poppler-utils \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    libreoffice \
+    pandoc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash appuser
+
+WORKDIR /app
+
+# Copy virtual environment from builder
+COPY --from=builder /app/.venv /app/.venv
+
+# Copy application code
+COPY packages/ ./packages/
+COPY apps/ ./apps/
+
+# Set ownership
+RUN chown -R appuser:appuser /app
+
+USER appuser
+
+# Set environment
+ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONPATH="/app"
+ENV PYTHONUNBUFFERED=1
+
+# Run the Celery worker
+CMD ["celery", "-A", "packages.common.core.celery_app", "worker", "--loglevel=info", "--concurrency=2"]
