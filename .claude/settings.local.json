@@ -7,7 +7,10 @@
       "Bash(npx shadcn@latest init -d)",
       "Bash(npx shadcn@latest add:*)",
       "Bash(npm install:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "WebFetch(domain:unstructured.io)",
+      "WebSearch",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

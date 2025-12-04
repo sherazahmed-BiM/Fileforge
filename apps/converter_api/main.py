@@ -5,15 +5,22 @@ Main FastAPI application for file-to-LLM conversion.
 """
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from apps.converter_api.api.v1.router import api_router
 from packages.common.core.config import settings
 from packages.common.core.database import close_db
 from packages.common.core.logging import setup_logging
+
+# Frontend paths
+FRONTEND_DIR = Path(__file__).parent.parent.parent / "frontend"
+TEMPLATES_DIR = FRONTEND_DIR / "templates"
+STATIC_DIR = FRONTEND_DIR / "static"
 
 
 @asynccontextmanager
@@ -115,15 +122,36 @@ async def health_check():
     }
 
 
-# Root endpoint
+# Mount static files
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
+# Root endpoint - serve frontend
 @app.get(
     "/",
     tags=["Root"],
-    summary="API Root",
-    description="Get API information",
+    summary="FileForge UI",
+    description="Serve the FileForge web interface",
+    response_class=HTMLResponse,
 )
 async def root():
-    """Root endpoint with API information."""
+    """Serve the FileForge web interface."""
+    index_file = TEMPLATES_DIR / "index.html"
+    if index_file.exists():
+        return HTMLResponse(content=index_file.read_text())
+    return HTMLResponse(content="<h1>FileForge</h1><p>Frontend not found. Visit <a href='/docs'>/docs</a> for API.</p>")
+
+
+# API info endpoint
+@app.get(
+    "/api",
+    tags=["Root"],
+    summary="API Info",
+    description="Get API information",
+)
+async def api_info():
+    """API information endpoint."""
     return {
         "app": settings.app_name,
         "version": settings.app_version,
