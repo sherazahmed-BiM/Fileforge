@@ -127,9 +127,9 @@ class DocumentProcessor:
             # Try Docling first (primary service)
             try:
                 from packages.common.services.conversion.extractors.docling_extractor import (
-                    DoclingPDFExtractor,
+                    DoclingExtractor,
                 )
-                self._pdf_extractor = DoclingPDFExtractor()
+                self._pdf_extractor = DoclingExtractor()
                 logger.info("Using Docling (primary) for PDF extraction")
             except (ImportError, Exception) as e:
                 logger.warning(

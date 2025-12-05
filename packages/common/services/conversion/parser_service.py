@@ -21,11 +21,13 @@ from packages.common.schemas.convert import ChunkStrategy
 # Try to import docling extractor
 try:
     from packages.common.services.conversion.extractors.docling_extractor import (
-        DoclingPDFExtractor,
+        DoclingExtractor,
+        DoclingPDFExtractor,  # Backward compatibility
     )
     DOCLING_AVAILABLE = True
 except ImportError:
     DOCLING_AVAILABLE = False
+    DoclingExtractor = None  # type: ignore
     DoclingPDFExtractor = None  # type: ignore
 
 logger = get_logger(__name__)
@@ -95,13 +97,13 @@ class ParserService:
         self._docling_extractor = None
 
     @property
-    def docling_extractor(self) -> Optional[DoclingPDFExtractor]:
+    def docling_extractor(self) -> Optional[DoclingExtractor]:
         """Lazy load docling extractor (primary service)."""
         if not DOCLING_AVAILABLE:
             return None
         if self._docling_extractor is None:
             try:
-                self._docling_extractor = DoclingPDFExtractor(
+                self._docling_extractor = DoclingExtractor(
                     enable_ocr=False,  # Can be enabled via options
                     enable_tables=True,
                     generate_images=True,
@@ -139,11 +141,27 @@ class ParserService:
 
         file_ext = file_path.suffix.lower()
 
-        # Use docling as primary service for PDFs
-        if file_ext == ".pdf":
+        # Check if docling supports this file format
+        docling_supported_extensions = {
+            # Documents
+            ".pdf", ".docx", ".xlsx", ".pptx",
+            # Markup
+            ".html", ".htm", ".xhtml", ".md", ".markdown", ".adoc", ".asciidoc",
+            # Data
+            ".csv",
+            # Images
+            ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp", ".webp",
+            # Audio
+            ".wav", ".mp3",
+            # Docling JSON
+            ".json",
+        }
+
+        # Use docling as primary service for all supported formats
+        if file_ext in docling_supported_extensions:
             if self.docling_extractor:
                 try:
-                    logger.info("Using Docling (primary) for PDF extraction")
+                    logger.info(f"Using Docling (primary) for {file_ext.upper()} extraction")
                     return self._parse_with_docling(
                         file_path,
                         extract_tables=extract_tables,
@@ -156,9 +174,9 @@ class ParserService:
                     )
                     # Fall through to unstructured fallback
             else:
-                logger.info("Docling unavailable, using Unstructured for PDF")
+                logger.info(f"Docling unavailable, using Unstructured for {file_ext}")
 
-        # Fall back to unstructured for other formats or when docling unavailable/failed
+        # Fall back to unstructured for unsupported formats or when docling unavailable/failed
         return self._parse_with_unstructured(
             file_path,
             strategy=strategy,
@@ -175,14 +193,14 @@ class ParserService:
         extract_images: bool = False,
         ocr_enabled: bool = True,
     ) -> tuple[list[Any], dict[str, Any]]:
-        """Parse PDF using Docling (primary service)."""
+        """Parse file using Docling (primary service for all supported formats)."""
         if not DOCLING_AVAILABLE:
             raise RuntimeError("Docling is not available")
 
         # Create extractor with current settings
         # Note: Converter initialization happens lazily on first use
         # and is cached per extractor instance for performance
-        extractor = DoclingPDFExtractor(
+        extractor = DoclingExtractor(
             enable_ocr=ocr_enabled,
             enable_tables=extract_tables,
             generate_images=extract_images,

@@ -26,9 +26,11 @@ from packages.common.services.conversion.extractors.image_extractor import Image
 # Try to import docling extractor (may not be available if docling is not installed)
 try:
     from packages.common.services.conversion.extractors.docling_extractor import (
-        DoclingPDFExtractor,
+        DoclingExtractor,
+        DoclingPDFExtractor,  # Backward compatibility alias
     )
 except ImportError:
+    DoclingExtractor = None  # type: ignore
     DoclingPDFExtractor = None  # type: ignore
 
 __all__ = [
@@ -48,6 +50,6 @@ __all__ = [
     "ImageExtractor",
 ]
 
-# Conditionally add docling extractor to exports
-if DoclingPDFExtractor is not None:
-    __all__.append("DoclingPDFExtractor")
+# Conditionally add docling extractors to exports
+if DoclingExtractor is not None:
+    __all__.extend(["DoclingExtractor", "DoclingPDFExtractor"])

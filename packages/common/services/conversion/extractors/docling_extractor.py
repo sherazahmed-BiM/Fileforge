@@ -1,7 +1,8 @@
 """
-Docling-based PDF Extractor for FileForge
+Docling-based Extractor for FileForge
 
-Uses Docling for high-accuracy PDF text and image extraction.
+Uses Docling for high-accuracy document text and image extraction.
+Supports multiple file formats: PDF, DOCX, XLSX, PPTX, HTML, Markdown, images, and more.
 Docling provides superior document understanding with layout analysis.
 """
 
@@ -57,19 +58,80 @@ def _load_docling():
     return _docling_available
 
 
-class DoclingPDFExtractor(BaseExtractor):
+def _get_input_format(file_path: Path) -> Optional[Any]:
+    """Map file extension to Docling InputFormat."""
+    if _InputFormat is None:
+        return None
+    
+    ext = file_path.suffix.lower()
+    
+    # Map extensions to InputFormat enum values
+    format_map = {
+        # Documents
+        '.pdf': _InputFormat.PDF,
+        '.docx': _InputFormat.DOCX,
+        '.xlsx': _InputFormat.XLSX,
+        '.pptx': _InputFormat.PPTX,
+        # Markup
+        '.html': _InputFormat.HTML,
+        '.htm': _InputFormat.HTML,
+        '.xhtml': _InputFormat.XHTML,
+        '.md': _InputFormat.MARKDOWN,
+        '.markdown': _InputFormat.MARKDOWN,
+        '.adoc': _InputFormat.ASCIIDOC,
+        '.asciidoc': _InputFormat.ASCIIDOC,
+        # Data
+        '.csv': _InputFormat.CSV,
+        # Images
+        '.png': _InputFormat.PNG,
+        '.jpg': _InputFormat.JPEG,
+        '.jpeg': _InputFormat.JPEG,
+        '.tiff': _InputFormat.TIFF,
+        '.tif': _InputFormat.TIFF,
+        '.bmp': _InputFormat.BMP,
+        '.webp': _InputFormat.WEBP,
+        # Audio
+        '.wav': _InputFormat.WAV,
+        '.mp3': _InputFormat.MP3,
+        # XML formats
+        '.xml': _InputFormat.USPTO_XML,  # Default, may need detection
+        # Docling JSON
+        '.json': _InputFormat.DOCLING_JSON,
+    }
+    
+    return format_map.get(ext)
+
+
+class DoclingExtractor(BaseExtractor):
     """
-    PDF extractor using Docling for high-accuracy extraction.
+    Multi-format extractor using Docling for high-accuracy extraction.
+
+    Supports: PDF, DOCX, XLSX, PPTX, HTML, Markdown, CSV, images (PNG, JPEG, TIFF, BMP, WEBP),
+    audio (WAV, MP3), and more.
 
     Docling provides:
     - Advanced layout analysis
     - Accurate text extraction with reading order
     - Table structure recognition
     - Picture/image extraction
-    - OCR support for scanned documents
+    - OCR support for scanned documents and images
     """
 
-    SUPPORTED_EXTENSIONS = {".pdf"}
+    # All file formats supported by Docling
+    SUPPORTED_EXTENSIONS = {
+        # Documents
+        ".pdf", ".docx", ".xlsx", ".pptx",
+        # Markup
+        ".html", ".htm", ".xhtml", ".md", ".markdown", ".adoc", ".asciidoc",
+        # Data
+        ".csv",
+        # Images
+        ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp", ".webp",
+        # Audio
+        ".wav", ".mp3",
+        # Docling JSON
+        ".json",
+    }
 
     def __init__(
         self,
@@ -79,12 +141,12 @@ class DoclingPDFExtractor(BaseExtractor):
         images_scale: float = 2.0,
     ):
         """
-        Initialize Docling PDF extractor.
+        Initialize Docling extractor for multiple file formats.
 
         Args:
-            enable_ocr: Enable OCR for scanned documents
+            enable_ocr: Enable OCR for scanned documents and images
             enable_tables: Enable table structure extraction
-            generate_images: Extract images from PDF
+            generate_images: Extract images from documents
             images_scale: Scale factor for extracted images
         """
         super().__init__()
@@ -92,7 +154,7 @@ class DoclingPDFExtractor(BaseExtractor):
         if not _load_docling():
             raise ImportError(
                 "Docling is required for this extractor. "
-                "Install with: pip install docling"
+                "Install with: pip install docling[ocr]"
             )
 
         self.enable_ocr = enable_ocr
@@ -100,27 +162,43 @@ class DoclingPDFExtractor(BaseExtractor):
         self.generate_images = generate_images
         self.images_scale = images_scale
 
-        # Lazy-load converter
-        self._converter = None
+        # Lazy-load converter (per format)
+        self._converters: dict[str, Any] = {}
 
-    @property
-    def converter(self):
-        """Lazy load the document converter."""
-        if self._converter is None:
-            pipeline_options = _PdfPipelineOptions()
-            pipeline_options.do_ocr = self.enable_ocr
-            pipeline_options.do_table_structure = self.enable_tables
-            pipeline_options.generate_picture_images = self.generate_images
-            pipeline_options.images_scale = self.images_scale
-
-            self._converter = _DocumentConverter(
-                format_options={
-                    _InputFormat.PDF: _PdfFormatOption(
-                        pipeline_options=pipeline_options
-                    )
-                }
+    def _get_converter(self, file_path: Path):
+        """Get or create converter for specific file format."""
+        input_format = _get_input_format(file_path)
+        
+        if input_format is None:
+            raise ValueError(f"Unsupported file format: {file_path.suffix}")
+        
+        format_key = str(input_format)
+        
+        if format_key not in self._converters:
+            # Configure format-specific options
+            format_options = {}
+            
+            # PDF-specific options
+            if input_format == _InputFormat.PDF:
+                pipeline_options = _PdfPipelineOptions()
+                pipeline_options.do_ocr = self.enable_ocr
+                pipeline_options.do_table_structure = self.enable_tables
+                pipeline_options.generate_picture_images = self.generate_images
+                pipeline_options.images_scale = self.images_scale
+                
+                format_options[input_format] = _PdfFormatOption(
+                    pipeline_options=pipeline_options
+                )
+            else:
+                # For other formats, use default options
+                # Docling handles OCR automatically for images
+                format_options[input_format] = None
+            
+            self._converters[format_key] = _DocumentConverter(
+                format_options=format_options if format_options else None
             )
-        return self._converter
+        
+        return self._converters[format_key]
 
     def extract(
         self,
@@ -129,25 +207,40 @@ class DoclingPDFExtractor(BaseExtractor):
         **options: Any,
     ) -> ExtractionResult:
         """
-        Extract text and images from a PDF file using Docling.
+        Extract text and images from a file using Docling.
 
         Args:
-            file_path: Path to the PDF file
+            file_path: Path to the file (PDF, DOCX, XLSX, PPTX, HTML, images, etc.)
             extract_images: Whether to extract images
 
         Returns:
             ExtractionResult with extracted text and images
         """
         file_path = Path(file_path)
-        logger.info(f"Extracting from PDF using Docling: {file_path.name}")
+        file_ext = file_path.suffix.lower()
+        
+        # Check if format is supported
+        input_format = _get_input_format(file_path)
+        if input_format is None:
+            raise ValueError(
+                f"Unsupported file format: {file_ext}. "
+                f"Supported formats: {', '.join(sorted(self.SUPPORTED_EXTENSIONS))}"
+            )
+        
+        logger.info(
+            f"Extracting from {input_format.value.upper()} using Docling: {file_path.name}"
+        )
 
         elements: list[ExtractedElement] = []
         warnings: list[str] = []
         metadata: dict[str, Any] = {}
 
         try:
+            # Get converter for this file format
+            converter = self._get_converter(file_path)
+            
             # Convert document using Docling
-            result = self.converter.convert(str(file_path))
+            result = converter.convert(str(file_path))
             doc = result.document
 
             # Get page count
@@ -193,16 +286,19 @@ class DoclingPDFExtractor(BaseExtractor):
 
             metadata["total_images"] = total_images
 
-            # Check if PDF has very little text
+            # Check if document has very little text (may need OCR)
             total_text = sum(
                 len(el.content) for el in elements
                 if el.element_type == ElementType.TEXT
             )
             if total_text < 100 and page_count > 0:
-                warnings.append(
-                    "PDF has very little extractable text. "
-                    "Consider enabling OCR for scanned documents."
-                )
+                if input_format in (_InputFormat.PDF, _InputFormat.PNG, 
+                                   _InputFormat.JPEG, _InputFormat.TIFF, 
+                                   _InputFormat.BMP, _InputFormat.WEBP):
+                    warnings.append(
+                        f"Document has very little extractable text. "
+                        f"Consider enabling OCR for scanned documents or images."
+                    )
 
         except Exception as e:
             logger.error(f"Docling extraction failed: {e}")
@@ -222,7 +318,7 @@ class DoclingPDFExtractor(BaseExtractor):
             raw_text=raw_text,
             page_count=page_count,
             word_count=word_count,
-            extraction_method="docling",
+            extraction_method=f"docling_{input_format.value if input_format else 'unknown'}",
             warnings=warnings,
         )
 
@@ -329,3 +425,7 @@ class DoclingPDFExtractor(BaseExtractor):
             logger.warning(f"Failed to extract picture {index}: {e}")
 
         return None
+
+
+# Keep backward compatibility alias
+DoclingPDFExtractor = DoclingExtractor
