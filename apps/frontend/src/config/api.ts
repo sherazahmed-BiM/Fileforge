@@ -5,6 +5,7 @@ export const API_CONFIG = {
   endpoints: {
     convert: "/api/v1/convert",
     convertSync: "/api/v1/convert/sync",
+    convertLocal: "/api/v1/convert/local",  // New: page-by-page with images
     convertStatus: (id: number) => `/api/v1/convert/status/${id}`,
     formats: "/api/v1/convert/formats",
     documents: "/api/v1/documents",

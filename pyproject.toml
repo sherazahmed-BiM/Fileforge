@@ -32,11 +32,16 @@ dependencies = [
     "pydantic-settings>=2.6.0",
     # HTTP clients
     "httpx>=0.28.0",
-    # Document parsing - Unstructured.io (handles PDF, DOCX, XLSX, HTML, etc.)
-    "unstructured[all-docs]>=0.16.0",
-    # Additional parsing support
-    "pandas>=2.2.0",             # CSV/Excel data handling
+    # Document parsing - Local lightweight stack (no external APIs)
+    "pymupdf>=1.24.0",           # PDF extraction (fast, local)
+    "pdfplumber>=0.11.0",        # PDF table extraction
+    "python-docx>=1.1.0",        # DOCX extraction
+    "openpyxl>=3.1.0",           # Excel extraction
+    "pandas>=2.2.0",             # CSV/data handling
     "pillow>=10.0.0",            # Image handling
+    "pytesseract>=0.3.10",       # OCR (requires Tesseract installed)
+    # Legacy parsing (optional, for backward compatibility)
+    "unstructured[all-docs]>=0.16.0",
     # Chunking & Tokenization
     "tiktoken>=0.8.0",           # Token counting (OpenAI tokenizer)
     # Utilities

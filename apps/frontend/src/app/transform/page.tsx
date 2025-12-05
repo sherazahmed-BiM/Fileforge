@@ -4,9 +4,9 @@ import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FileSidebar } from "@/components/transform/file-sidebar";
 import { FilePreview } from "@/components/transform/file-preview";
-import { ResultPanel } from "@/components/transform/result-panel";
-import { convertFileSync, getDocumentLLM } from "@/lib/api";
-import type { LLMReadyResponse } from "@/types";
+import { TextResultPanel } from "@/components/transform/text-result-panel";
+import { extractPDFText } from "@/lib/api";
+import type { PDFExtractionResponse } from "@/types";
 
 // Custom SVG Icons - Matching landing page style
 function LogoMark({ className }: { className?: string }) {
@@ -51,7 +51,7 @@ export default function TransformPage() {
   const router = useRouter();
   const [files, setFiles] = useState<FileItem[]>([]);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
-  const [result, setResult] = useState<LLMReadyResponse | null>(null);
+  const [result, setResult] = useState<PDFExtractionResponse | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
@@ -96,16 +96,11 @@ export default function TransformPage() {
     setError(null);
 
     try {
-      const document = await convertFileSync(file, {
-        chunk_strategy: "semantic",
-        chunk_size: 1000,
-        chunk_overlap: 100,
-      });
-
-      const llmResult = await getDocumentLLM(document.id);
-      setResult(llmResult);
+      // Extract text from PDF
+      const extractionResult = await extractPDFText(file);
+      setResult(extractionResult);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to process file");
+      setError(err instanceof Error ? err.message : "Failed to extract text from PDF");
     } finally {
       setIsProcessing(false);
     }
@@ -213,11 +208,11 @@ export default function TransformPage() {
           fileUrl={selectedFile?.objectUrl || null}
           fileName={selectedFile?.name || null}
           fileType={selectedFile?.type || null}
-          totalPages={result?.metadata?.page_count || 1}
+          totalPages={result?.statistics?.page_count || 1}
         />
 
-        {/* Result panel */}
-        <ResultPanel
+        {/* Result panel - text extraction */}
+        <TextResultPanel
           result={result}
           isLoading={isProcessing}
           error={error}

@@ -9,6 +9,7 @@ import type {
   LLMReadyResponse,
   SupportedFormat,
   Chunk,
+  PDFExtractionResponse,
 } from "@/types";
 
 class ApiError extends Error {
@@ -126,6 +127,27 @@ export async function convertFileSync(
 
 export async function getConversionStatus(id: number): Promise<Document> {
   return fetchApi<Document>(API_CONFIG.endpoints.convertStatus(id));
+}
+
+// Extract text from PDF
+export async function extractPDFText(file: File): Promise<PDFExtractionResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(getApiUrl(API_CONFIG.endpoints.convertLocal), {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new ApiError(
+      response.status,
+      errorData.detail || "PDF text extraction failed"
+    );
+  }
+
+  return response.json();
 }
 
 export async function getSupportedFormats(): Promise<SupportedFormat[]> {

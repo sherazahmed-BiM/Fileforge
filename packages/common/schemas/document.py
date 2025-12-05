@@ -114,11 +114,20 @@ class LLMChunk(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class ExtractedImage(BaseModel):
+    """Extracted image from document."""
+
+    page: Optional[int] = None
+    data: str  # base64 encoded image data (data:image/jpeg;base64,...)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class LLMDocumentContent(BaseModel):
     """LLM-ready document content."""
 
     raw_text: Optional[str] = None
     chunks: list[LLMChunk] = []
+    images: list[ExtractedImage] = []
 
 
 class LLMDocumentResponse(BaseModel):

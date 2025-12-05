@@ -115,3 +115,30 @@ export interface SupportedFormat {
   category: string;
   description: string;
 }
+
+// PDF text extraction response types
+export interface PDFPage {
+  page_number: number;
+  text: string;
+}
+
+export interface PDFDocument {
+  filename: string;
+  file_type: string;
+  file_size_bytes: number;
+  file_hash: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface PDFStatistics {
+  page_count: number;
+  word_count: number;
+}
+
+export interface PDFExtractionResponse {
+  document: PDFDocument;
+  pages: PDFPage[];
+  statistics: PDFStatistics;
+  extraction_method: string;
+  warnings: string[];
+}

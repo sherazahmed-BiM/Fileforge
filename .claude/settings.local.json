@@ -10,7 +10,11 @@
       "Bash(npm run build:*)",
       "WebFetch(domain:unstructured.io)",
       "WebSearch",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Bash(uv run python:*)",
+      "Bash(curl:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []
