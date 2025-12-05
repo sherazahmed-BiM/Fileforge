@@ -23,6 +23,14 @@ from packages.common.services.conversion.extractors.text_extractor import (
 )
 from packages.common.services.conversion.extractors.image_extractor import ImageExtractor
 
+# Try to import docling extractor (may not be available if docling is not installed)
+try:
+    from packages.common.services.conversion.extractors.docling_extractor import (
+        DoclingPDFExtractor,
+    )
+except ImportError:
+    DoclingPDFExtractor = None  # type: ignore
+
 __all__ = [
     # Base classes
     "BaseExtractor",
@@ -39,3 +47,7 @@ __all__ = [
     "HTMLExtractor",
     "ImageExtractor",
 ]
+
+# Conditionally add docling extractor to exports
+if DoclingPDFExtractor is not None:
+    __all__.append("DoclingPDFExtractor")

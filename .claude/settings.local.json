@@ -14,7 +14,9 @@
       "Bash(find:*)",
       "Bash(uv run python:*)",
       "Bash(curl:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(pkill:*)",
+      "Bash(uv add:*)"
     ],
     "deny": [],
     "ask": []

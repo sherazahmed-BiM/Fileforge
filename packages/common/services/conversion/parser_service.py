@@ -2,6 +2,7 @@
 Parser Service for FileForge
 
 Uses Unstructured.io for document parsing and text extraction.
+Optionally uses Docling for PDF extraction when available.
 """
 
 import hashlib
@@ -17,28 +18,98 @@ from packages.common.core.config import settings
 from packages.common.core.logging import get_logger
 from packages.common.schemas.convert import ChunkStrategy
 
+# Try to import docling extractor
+try:
+    from packages.common.services.conversion.extractors.docling_extractor import (
+        DoclingPDFExtractor,
+    )
+    DOCLING_AVAILABLE = True
+except ImportError:
+    DOCLING_AVAILABLE = False
+    DoclingPDFExtractor = None  # type: ignore
 
 logger = get_logger(__name__)
 
 
+class UnstructuredElementAdapter:
+    """
+    Adapter to make ExtractedElement look like an Unstructured element.
+    
+    This allows docling extraction results to work with unstructured chunking.
+    """
+
+    def __init__(self, element: Any, category: str = "NarrativeText"):
+        """
+        Initialize adapter.
+        
+        Args:
+            element: ExtractedElement from docling
+            category: Element category (defaults to NarrativeText)
+        """
+        self._element = element
+        self.category = category
+        # Create a simple metadata object
+        self.metadata = self._create_metadata()
+
+    def _create_metadata(self) -> Any:
+        """Create metadata object compatible with unstructured."""
+        class Metadata:
+            def __init__(self, page_number: Optional[int] = None, section: Optional[str] = None):
+                self.page_number = page_number
+                self.section = section
+                self.text_as_html = None
+                self.coordinates = None
+
+        return Metadata(
+            page_number=self._element.page_number,
+            section=self._element.section,
+        )
+
+    def __str__(self) -> str:
+        """Return element content as string."""
+        return self._element.content
+
+
 class ParserService:
     """
-    Service for parsing documents using Unstructured.io.
+    Service for parsing documents using Docling as primary and Unstructured.io as fallback.
 
     Handles:
     - Document parsing (PDF, DOCX, XLSX, HTML, etc.)
     - Text extraction with metadata
     - Chunking (fixed and semantic)
     - Token counting
+    
+    Uses Docling as the primary extraction service for PDFs.
+    Falls back to Unstructured only if Docling is unavailable or fails.
     """
 
     def __init__(self):
-        """Initialize parser service."""
+        """Initialize parser service with Docling as primary."""
         # Initialize tiktoken encoder for token counting
         try:
             self.encoder = tiktoken.get_encoding("cl100k_base")  # GPT-4 tokenizer
         except Exception:
             self.encoder = tiktoken.get_encoding("gpt2")
+        
+        self._docling_extractor = None
+
+    @property
+    def docling_extractor(self) -> Optional[DoclingPDFExtractor]:
+        """Lazy load docling extractor (primary service)."""
+        if not DOCLING_AVAILABLE:
+            return None
+        if self._docling_extractor is None:
+            try:
+                self._docling_extractor = DoclingPDFExtractor(
+                    enable_ocr=False,  # Can be enabled via options
+                    enable_tables=True,
+                    generate_images=True,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to initialize Docling extractor: {e}")
+                return None
+        return self._docling_extractor
 
     def parse_file(
         self,
@@ -66,6 +137,112 @@ class ParserService:
         file_path = Path(file_path)
         logger.info(f"Parsing file: {file_path}")
 
+        file_ext = file_path.suffix.lower()
+
+        # Use docling as primary service for PDFs
+        if file_ext == ".pdf":
+            if self.docling_extractor:
+                try:
+                    logger.info("Using Docling (primary) for PDF extraction")
+                    return self._parse_with_docling(
+                        file_path,
+                        extract_tables=extract_tables,
+                        extract_images=extract_images,
+                        ocr_enabled=ocr_enabled,
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Docling extraction failed, falling back to Unstructured: {e}"
+                    )
+                    # Fall through to unstructured fallback
+            else:
+                logger.info("Docling unavailable, using Unstructured for PDF")
+
+        # Fall back to unstructured for other formats or when docling unavailable/failed
+        return self._parse_with_unstructured(
+            file_path,
+            strategy=strategy,
+            extract_tables=extract_tables,
+            extract_images=extract_images,
+            ocr_enabled=ocr_enabled,
+            ocr_languages=ocr_languages,
+        )
+
+    def _parse_with_docling(
+        self,
+        file_path: Path,
+        extract_tables: bool = True,
+        extract_images: bool = False,
+        ocr_enabled: bool = True,
+    ) -> tuple[list[Any], dict[str, Any]]:
+        """Parse PDF using Docling (primary service)."""
+        if not DOCLING_AVAILABLE:
+            raise RuntimeError("Docling is not available")
+
+        # Create extractor with current settings
+        # Note: Converter initialization happens lazily on first use
+        # and is cached per extractor instance for performance
+        extractor = DoclingPDFExtractor(
+            enable_ocr=ocr_enabled,
+            enable_tables=extract_tables,
+            generate_images=extract_images,
+        )
+
+        # Extract using docling
+        # First extraction will initialize the converter (takes ~20s)
+        # Subsequent extractions with same settings reuse the converter
+        extraction_result = extractor.extract(
+            file_path,
+            extract_images=extract_images,
+        )
+
+        # Convert ExtractionResult to unstructured-like elements
+        elements = []
+        for el in extraction_result.elements:
+            # Map element types to unstructured categories
+            category_map = {
+                "text": "NarrativeText",
+                "title": "Title",
+                "heading": "Title",
+                "paragraph": "NarrativeText",
+                "table": "Table",
+                "image": "Figure",
+            }
+            category = category_map.get(el.element_type.value, "NarrativeText")
+            
+            adapter = UnstructuredElementAdapter(el, category=category)
+            elements.append(adapter)
+
+        # Extract metadata
+        metadata = extraction_result.metadata.copy()
+        metadata["filename"] = file_path.name
+        metadata["file_extension"] = file_path.suffix.lower()
+        metadata["page_count"] = extraction_result.page_count
+        metadata["extraction_method"] = "docling"
+
+        # Count element types
+        element_counts: dict[str, int] = {}
+        for el in elements:
+            category = getattr(el, "category", "Unknown")
+            element_counts[category] = element_counts.get(category, 0) + 1
+        metadata["element_counts"] = element_counts
+
+        logger.info(
+            f"Extracted {len(elements)} elements from {file_path.name} using Docling"
+        )
+
+        return elements, metadata
+
+    def _parse_with_unstructured(
+        self,
+        file_path: Path,
+        strategy: str = "auto",
+        extract_tables: bool = True,
+        extract_images: bool = False,
+        ocr_enabled: bool = True,
+        ocr_languages: str = "eng",
+    ) -> tuple[list[Any], dict[str, Any]]:
+        """Parse file using Unstructured."""
         # Determine parsing strategy
         partition_kwargs: dict[str, Any] = {
             "filename": str(file_path),
@@ -89,13 +266,14 @@ class ParserService:
 
         try:
             elements = partition(**partition_kwargs)
-            logger.info(f"Extracted {len(elements)} elements from {file_path.name}")
+            logger.info(f"Extracted {len(elements)} elements from {file_path.name} using Unstructured")
         except Exception as e:
             logger.error(f"Failed to parse {file_path}: {e}")
             raise
 
         # Extract metadata
         metadata = self._extract_metadata(elements, file_path)
+        metadata["extraction_method"] = "unstructured"
 
         return elements, metadata
 

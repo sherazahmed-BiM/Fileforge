@@ -9,7 +9,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from packages.common.services.conversion.extractors.base import ExtractionResult
+from packages.common.services.conversion.extractors.base import (
+    ExtractionResult,
+    ElementType,
+)
 from packages.common.services.conversion.extractors.pdf_extractor import PDFExtractor
 from packages.common.core.logging import get_logger
 
@@ -47,7 +50,40 @@ class ProcessingResult:
         self.word_count = self.extraction.word_count
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary format."""
+        """Convert to dictionary format with text and images organized by page."""
+        # Group elements by page
+        pages_data: dict[int, dict[str, Any]] = {}
+
+        for el in self.extraction.elements:
+            page_num = el.page_number or 1
+
+            if page_num not in pages_data:
+                pages_data[page_num] = {
+                    "page_number": page_num,
+                    "text": "",
+                    "images": [],
+                }
+
+            if el.element_type == ElementType.TEXT:
+                # Append text content
+                if el.content.strip():
+                    if pages_data[page_num]["text"]:
+                        pages_data[page_num]["text"] += "\n\n"
+                    pages_data[page_num]["text"] += el.content
+            elif el.element_type == ElementType.IMAGE and el.image_data:
+                # Add image
+                pages_data[page_num]["images"].append({
+                    "description": el.content,
+                    "data": el.image_data,
+                    "metadata": el.metadata,
+                })
+
+        # Convert to sorted list
+        pages = [pages_data[p] for p in sorted(pages_data.keys())]
+
+        # Count total images
+        total_images = sum(len(p["images"]) for p in pages)
+
         return {
             "document": {
                 "filename": self.filename,
@@ -56,17 +92,11 @@ class ProcessingResult:
                 "file_hash": self.file_hash,
                 "metadata": self.extraction.metadata,
             },
-            "pages": [
-                {
-                    "page_number": el.page_number,
-                    "text": el.content,
-                }
-                for el in self.extraction.elements
-                if el.content.strip()
-            ],
+            "pages": pages,
             "statistics": {
                 "page_count": self.page_count,
                 "word_count": self.word_count,
+                "image_count": total_images,
             },
             "extraction_method": self.extraction.extraction_method,
             "warnings": self.warnings + self.extraction.warnings,
@@ -77,6 +107,9 @@ class DocumentProcessor:
     """
     Document processor for extracting text from PDFs.
 
+    Uses Docling as the primary extraction service.
+    Falls back to PyMuPDF only if Docling is unavailable.
+
     Usage:
         processor = DocumentProcessor()
         result = processor.process("document.pdf")
@@ -84,14 +117,25 @@ class DocumentProcessor:
     """
 
     def __init__(self):
-        """Initialize document processor."""
+        """Initialize document processor with Docling as primary."""
         self._pdf_extractor = None
 
     @property
     def pdf_extractor(self) -> PDFExtractor:
-        """Lazy load PDF extractor."""
+        """Lazy load PDF extractor (Docling primary, PyMuPDF fallback)."""
         if self._pdf_extractor is None:
-            self._pdf_extractor = PDFExtractor()
+            # Try Docling first (primary service)
+            try:
+                from packages.common.services.conversion.extractors.docling_extractor import (
+                    DoclingPDFExtractor,
+                )
+                self._pdf_extractor = DoclingPDFExtractor()
+                logger.info("Using Docling (primary) for PDF extraction")
+            except (ImportError, Exception) as e:
+                logger.warning(
+                    f"Docling not available, falling back to PyMuPDF: {e}"
+                )
+                self._pdf_extractor = PDFExtractor()
         return self._pdf_extractor
 
     def process(self, file_path: str | Path, **options: Any) -> ProcessingResult:

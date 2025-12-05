@@ -117,9 +117,23 @@ export interface SupportedFormat {
 }
 
 // PDF text extraction response types
+export interface PDFImage {
+  description: string;
+  data: string;  // base64 data URL
+  metadata?: {
+    original_width?: number;
+    original_height?: number;
+    extracted_width?: number;
+    extracted_height?: number;
+    image_type?: string;
+    original_format?: string;
+  };
+}
+
 export interface PDFPage {
   page_number: number;
   text: string;
+  images: PDFImage[];
 }
 
 export interface PDFDocument {
@@ -133,6 +147,7 @@ export interface PDFDocument {
 export interface PDFStatistics {
   page_count: number;
   word_count: number;
+  image_count: number;
 }
 
 export interface PDFExtractionResponse {

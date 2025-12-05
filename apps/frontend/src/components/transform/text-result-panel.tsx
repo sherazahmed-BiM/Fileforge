@@ -217,6 +217,7 @@ export function TextResultPanel({ result, isLoading, error }: TextResultPanelPro
           </div>
           <span className="text-sm font-display font-semibold text-[#1A1A1A]">
             {result!.statistics.page_count} pages, {result!.statistics.word_count.toLocaleString()} words
+            {result!.statistics.image_count > 0 && `, ${result!.statistics.image_count} images`}
           </span>
         </div>
       </div>
@@ -246,6 +247,16 @@ export function TextResultPanel({ result, isLoading, error }: TextResultPanelPro
   );
 }
 
+function ImageIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <polyline points="21,15 16,10 5,21" />
+    </svg>
+  );
+}
+
 function TextContent({
   pages,
   copiedPage,
@@ -261,9 +272,17 @@ function TextContent({
         <div key={page.page_number} className="space-y-2">
           {/* Page header */}
           <div className="flex items-center justify-between sticky top-0 bg-white py-2 border-b border-[#EDEAE4] z-10">
-            <span className="px-2 py-1 text-xs font-display font-bold bg-[#4A6B5A] text-white rounded-md">
-              Page {page.page_number}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-1 text-xs font-display font-bold bg-[#4A6B5A] text-white rounded-md">
+                Page {page.page_number}
+              </span>
+              {page.images && page.images.length > 0 && (
+                <span className="flex items-center gap-1 px-2 py-1 text-xs font-display font-semibold bg-[#C4705A] text-white rounded-md">
+                  <ImageIcon className="w-3 h-3" />
+                  {page.images.length}
+                </span>
+              )}
+            </div>
             <button
               onClick={() => onCopyPage(page.page_number, page.text)}
               className="flex items-center gap-1 px-2 py-1 text-xs text-[#6B6B6B] hover:text-[#1A1A1A] transition-colors cursor-pointer"
@@ -286,6 +305,38 @@ function TextContent({
           <div className="text-sm font-body text-[#2C2C2C] leading-relaxed whitespace-pre-wrap">
             {page.text || <span className="text-[#6B6B6B] italic">No text on this page</span>}
           </div>
+
+          {/* Page images */}
+          {page.images && page.images.length > 0 && (
+            <div className="space-y-3 pt-3 border-t border-[#EDEAE4]">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-[#C4705A]" />
+                <span className="text-xs font-display font-semibold text-[#6B6B6B]">
+                  {page.images.length} image{page.images.length > 1 ? "s" : ""} on this page
+                </span>
+              </div>
+              <div className="grid gap-3">
+                {page.images.map((image, idx) => (
+                  <div key={idx} className="rounded-lg neo-border overflow-hidden bg-[#F5F2ED]">
+                    <img
+                      src={image.data}
+                      alt={image.description || `Image ${idx + 1}`}
+                      className="w-full h-auto"
+                      loading="lazy"
+                    />
+                    <div className="px-3 py-2 text-xs text-[#6B6B6B] border-t border-[#EDEAE4]">
+                      <span className="font-display font-semibold">{image.description}</span>
+                      {image.metadata && (
+                        <span className="ml-2">
+                          ({image.metadata.extracted_width}x{image.metadata.extracted_height})
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ))}
     </div>
