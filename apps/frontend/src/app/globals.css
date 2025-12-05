@@ -1,0 +1,625 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ========================================
+   SOFT NEOBRUTALISM DESIGN SYSTEM
+   Premium Editorial Palette
+   ======================================== */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Soft Neobrutalism Color Tokens */
+  --color-bone: #FAF8F5;
+  --color-cream: #F5F2ED;
+  --color-surface: #EDEAE4;
+  --color-clay: #C4705A;
+  --color-clay-dark: #A65D4A;
+  --color-forest: #4A6B5A;
+  --color-forest-dark: #3A5548;
+  --color-eucalyptus: #6B9B8A;
+  --color-charcoal: #2C2C2C;
+  --color-ink: #1A1A1A;
+  --color-muted-text: #6B6B6B;
+  --color-border-dark: #2C2C2C;
+
+  /* shadcn variables */
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: #FAF8F5;
+  --foreground: #1A1A1A;
+  --card: #FFFFFF;
+  --card-foreground: #1A1A1A;
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1A1A;
+  --primary: #C4705A;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F5F2ED;
+  --secondary-foreground: #1A1A1A;
+  --muted: #EDEAE4;
+  --muted-foreground: #6B6B6B;
+  --accent: #4A6B5A;
+  --accent-foreground: #FFFFFF;
+  --destructive: #B54A4A;
+  --border: #2C2C2C;
+  --input: #2C2C2C;
+  --ring: #C4705A;
+  --chart-1: #C4705A;
+  --chart-2: #4A6B5A;
+  --chart-3: #6B9B8A;
+  --chart-4: #8B7355;
+  --chart-5: #5A6B7A;
+  --sidebar: #FAF8F5;
+  --sidebar-foreground: #1A1A1A;
+  --sidebar-primary: #C4705A;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F5F2ED;
+  --sidebar-accent-foreground: #1A1A1A;
+  --sidebar-border: #2C2C2C;
+  --sidebar-ring: #C4705A;
+}
+
+.dark {
+  --background: #1A1A1A;
+  --foreground: #FAF8F5;
+  --card: #2C2C2C;
+  --card-foreground: #FAF8F5;
+  --popover: #2C2C2C;
+  --popover-foreground: #FAF8F5;
+  --primary: #C4705A;
+  --primary-foreground: #FFFFFF;
+  --secondary: #3A3A3A;
+  --secondary-foreground: #FAF8F5;
+  --muted: #3A3A3A;
+  --muted-foreground: #A0A0A0;
+  --accent: #6B9B8A;
+  --accent-foreground: #1A1A1A;
+  --destructive: #B54A4A;
+  --border: #4A4A4A;
+  --input: #4A4A4A;
+  --ring: #C4705A;
+  --chart-1: #C4705A;
+  --chart-2: #6B9B8A;
+  --chart-3: #8B7355;
+  --chart-4: #5A6B7A;
+  --chart-5: #7A5A6B;
+  --sidebar: #1A1A1A;
+  --sidebar-foreground: #FAF8F5;
+  --sidebar-primary: #C4705A;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #3A3A3A;
+  --sidebar-accent-foreground: #FAF8F5;
+  --sidebar-border: #4A4A4A;
+  --sidebar-ring: #C4705A;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+/* ========================================
+   TYPOGRAPHY SYSTEM
+   Space Grotesk for Display, Inter for Body
+   ======================================== */
+
+.font-display {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+}
+
+.font-body {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* ========================================
+   SOFT NEOBRUTALISM SHADOWS
+   Offset, solid, no blur
+   ======================================== */
+
+.neo-shadow-sm {
+  box-shadow: 3px 3px 0px 0px #2C2C2C;
+}
+
+.neo-shadow {
+  box-shadow: 4px 4px 0px 0px #2C2C2C;
+}
+
+.neo-shadow-md {
+  box-shadow: 5px 5px 0px 0px #2C2C2C;
+}
+
+.neo-shadow-lg {
+  box-shadow: 6px 6px 0px 0px #2C2C2C;
+}
+
+.neo-shadow-xl {
+  box-shadow: 8px 8px 0px 0px #2C2C2C;
+}
+
+/* Stacked shadow effect (layered cards motif) */
+.neo-shadow-stack {
+  box-shadow:
+    3px 3px 0px 0px #2C2C2C,
+    6px 6px 0px 0px rgba(44, 44, 44, 0.3),
+    9px 9px 0px 0px rgba(44, 44, 44, 0.1);
+}
+
+/* Clay accent shadow */
+.neo-shadow-clay {
+  box-shadow: 4px 4px 0px 0px #C4705A;
+}
+
+/* Forest accent shadow */
+.neo-shadow-forest {
+  box-shadow: 4px 4px 0px 0px #4A6B5A;
+}
+
+/* Eucalyptus accent shadow */
+.neo-shadow-eucalyptus {
+  box-shadow: 4px 4px 0px 0px #6B9B8A;
+}
+
+/* ========================================
+   NEOBRUTALISM BORDERS
+   Thick, solid, characterful
+   ======================================== */
+
+.neo-border {
+  border: 2.5px solid #2C2C2C;
+}
+
+.neo-border-3 {
+  border: 3px solid #2C2C2C;
+}
+
+.neo-border-clay {
+  border: 2.5px solid #C4705A;
+}
+
+.neo-border-forest {
+  border: 2.5px solid #4A6B5A;
+}
+
+/* Stitched border effect (signature motif) */
+.neo-border-stitched {
+  border: 2.5px dashed #2C2C2C;
+  border-spacing: 4px;
+}
+
+/* ========================================
+   NEOBRUTALISM BUTTONS
+   Blocky, tactile, responsive
+   ======================================== */
+
+.neo-btn {
+  border: 2.5px solid #2C2C2C;
+  box-shadow: 4px 4px 0px 0px #2C2C2C;
+  border-radius: 14px;
+  transition: all 0.12s ease-out;
+}
+
+.neo-btn:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px 0px #2C2C2C;
+}
+
+.neo-btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0px 0px 0px 0px #2C2C2C;
+}
+
+.neo-btn-outline {
+  border: 2.5px solid #2C2C2C;
+  background: transparent;
+  border-radius: 14px;
+  transition: all 0.12s ease-out;
+}
+
+.neo-btn-outline:hover {
+  background: #2C2C2C;
+  color: #FAF8F5;
+}
+
+/* ========================================
+   NEOBRUTALISM CARDS
+   Rounded rectangles with offset shadows
+   ======================================== */
+
+.neo-card {
+  border: 2.5px solid #2C2C2C;
+  box-shadow: 5px 5px 0px 0px #2C2C2C;
+  border-radius: 16px;
+  background: #FFFFFF;
+  transition: all 0.15s ease-out;
+}
+
+.neo-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0px 0px #2C2C2C;
+}
+
+.neo-card-flat {
+  border: 2.5px solid #2C2C2C;
+  border-radius: 16px;
+  background: #FFFFFF;
+}
+
+/* Index card motif - layered offset */
+.neo-card-index {
+  position: relative;
+  border: 2.5px solid #2C2C2C;
+  border-radius: 14px;
+  background: #FFFFFF;
+}
+
+.neo-card-index::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  right: -6px;
+  bottom: -6px;
+  border: 2.5px solid #2C2C2C;
+  border-radius: 14px;
+  background: #F5F2ED;
+  z-index: -1;
+}
+
+.neo-card-index::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: -12px;
+  bottom: -12px;
+  border: 2.5px solid rgba(44, 44, 44, 0.4);
+  border-radius: 14px;
+  background: #EDEAE4;
+  z-index: -2;
+}
+
+/* ========================================
+   SIGNATURE VISUAL MOTIF
+   Layered Index Cards with Punch Holes
+   ======================================== */
+
+/* Punch hole decoration */
+.punch-hole {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #2C2C2C;
+  background: #FAF8F5;
+}
+
+.punch-hole-row {
+  display: flex;
+  gap: 8px;
+}
+
+/* Perforation line */
+.perforation {
+  background-image: repeating-linear-gradient(
+    90deg,
+    #2C2C2C 0px,
+    #2C2C2C 4px,
+    transparent 4px,
+    transparent 12px
+  );
+  height: 2px;
+}
+
+/* Tab divider */
+.tab-divider {
+  position: relative;
+  height: 3px;
+  background: #2C2C2C;
+}
+
+.tab-divider::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 20%;
+  width: 60px;
+  height: 20px;
+  background: #C4705A;
+  border: 2.5px solid #2C2C2C;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+}
+
+/* ========================================
+   WINDOW FRAME (Demo Section)
+   ======================================== */
+
+.window-frame {
+  border: 3px solid #2C2C2C;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 6px 6px 0px 0px #2C2C2C;
+}
+
+.window-titlebar {
+  background: #2C2C2C;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.window-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #FAF8F5;
+}
+
+.window-dot-red { background: #B54A4A; }
+.window-dot-yellow { background: #C4A054; }
+.window-dot-green { background: #4A6B5A; }
+
+/* ========================================
+   CUSTOM SCROLLBAR
+   ======================================== */
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #6B6B6B transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: #6B6B6B;
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: #2C2C2C;
+  }
+
+  /* Hidden scrollbar - scrolls without visible scrollbar */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ========================================
+   BADGE STYLES
+   ======================================== */
+
+.neo-badge {
+  border: 2px solid #2C2C2C;
+  border-radius: 8px;
+  box-shadow: 2px 2px 0px 0px #2C2C2C;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.neo-badge-clay {
+  background: #C4705A;
+  color: #FFFFFF;
+  border-color: #2C2C2C;
+}
+
+.neo-badge-forest {
+  background: #4A6B5A;
+  color: #FFFFFF;
+  border-color: #2C2C2C;
+}
+
+.neo-badge-outline {
+  background: transparent;
+  color: #2C2C2C;
+  border-color: #2C2C2C;
+}
+
+/* ========================================
+   DIVIDERS
+   ======================================== */
+
+.neo-divider {
+  height: 3px;
+  background: #2C2C2C;
+}
+
+.neo-divider-thin {
+  height: 2px;
+  background: #2C2C2C;
+}
+
+.neo-divider-dashed {
+  height: 0;
+  border-top: 2px dashed #2C2C2C;
+}
+
+/* ========================================
+   GRID BACKGROUND PATTERN
+   ======================================== */
+
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(44, 44, 44, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(44, 44, 44, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Dot grid pattern */
+.dot-grid-bg {
+  background-image: radial-gradient(circle, #2C2C2C 1px, transparent 1px);
+  background-size: 24px 24px;
+  opacity: 0.1;
+}
+
+/* ========================================
+   ANIMATIONS
+   Subtle, purposeful movements
+   ======================================== */
+
+@keyframes subtle-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-subtle-float {
+  animation: subtle-float 4s ease-in-out infinite;
+}
+
+@keyframes card-stack {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-1deg);
+  }
+  75% {
+    transform: rotate(1deg);
+  }
+}
+
+.animate-card-stack {
+  animation: card-stack 6s ease-in-out infinite;
+}
+
+/* Stagger delay utilities */
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+
+/* ========================================
+   SELECTION STYLES
+   ======================================== */
+
+::selection {
+  background: #C4705A;
+  color: #FFFFFF;
+}
+
+/* ========================================
+   FOCUS STYLES
+   ======================================== */
+
+.neo-focus:focus-visible {
+  outline: 3px solid #C4705A;
+  outline-offset: 2px;
+}
+
+/* ========================================
+   UTILITY CLASSES FOR LANDING PAGE
+   ======================================== */
+
+/* Editorial spacing */
+.section-padding {
+  padding-top: 7rem;
+  padding-bottom: 7rem;
+}
+
+.section-padding-lg {
+  padding-top: 9rem;
+  padding-bottom: 9rem;
+}
+
+/* Max widths */
+.max-w-editorial {
+  max-width: 1280px;
+}
+
+.max-w-content {
+  max-width: 720px;
+}
+
+/* Text styles */
+.text-display {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.text-headline {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.text-body {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.text-label {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
