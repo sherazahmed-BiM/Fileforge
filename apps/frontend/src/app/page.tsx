@@ -589,7 +589,7 @@ export default function LandingPage() {
                 Log in
               </button>
               <button
-                onClick={() => router.push("/transform")}
+                onClick={() => router.push("/upload")}
                 className="neo-btn bg-[#C4705A] text-white px-5 py-2.5 text-sm font-display font-semibold cursor-pointer"
               >
                 Try it Free
@@ -631,7 +631,7 @@ export default function LandingPage() {
               {/* CTAs */}
               <div className="flex flex-wrap items-center gap-4">
                 <button
-                  onClick={() => router.push("/transform")}
+                  onClick={() => router.push("/upload")}
                   className="neo-btn bg-[#C4705A] text-white px-7 py-3.5 text-base font-display font-semibold flex items-center gap-2 cursor-pointer"
                 >
                   Start Converting
@@ -1027,7 +1027,7 @@ export default function LandingPage() {
 
                 {/* CTA */}
                 <button
-                  onClick={() => router.push("/transform")}
+                  onClick={() => router.push("/upload")}
                   className={`w-full py-3.5 rounded-xl text-sm font-display font-semibold transition-all cursor-pointer ${
                     plan.highlighted
                       ? "neo-btn bg-[#C4705A] text-white"
@@ -1088,7 +1088,7 @@ export default function LandingPage() {
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4">
               <button
-                onClick={() => router.push("/transform")}
+                onClick={() => router.push("/upload")}
                 className="neo-btn bg-[#C4705A] text-white px-8 py-4 text-base font-display font-semibold flex items-center gap-2 cursor-pointer"
               >
                 Get Started Free

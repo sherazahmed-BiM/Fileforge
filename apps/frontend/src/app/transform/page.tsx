@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FileSidebar } from "@/components/transform/file-sidebar";
 import { FilePreview } from "@/components/transform/file-preview";
@@ -54,8 +54,42 @@ export default function TransformPage() {
   const [result, setResult] = useState<LLMReadyResponse | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   const selectedFile = files.find((f) => f.id === selectedFileId);
+
+  // Check for pending upload from upload page
+  useEffect(() => {
+    if (initialLoadDone) return;
+    setInitialLoadDone(true);
+
+    const pendingUploadData = sessionStorage.getItem("pendingUpload");
+    const pendingUploadUrl = sessionStorage.getItem("pendingUploadUrl");
+    const pendingFile = (window as typeof window & { __pendingFile?: File }).__pendingFile;
+
+    if (pendingUploadData && pendingFile) {
+      const fileData = JSON.parse(pendingUploadData);
+
+      const newFile: FileItem = {
+        id: fileData.id,
+        name: fileData.name.replace(/\.[^/.]+$/, ""),
+        type: fileData.name.split(".").pop() || "",
+        file: pendingFile,
+        objectUrl: pendingUploadUrl || URL.createObjectURL(pendingFile),
+      };
+
+      setFiles([newFile]);
+      setSelectedFileId(fileData.id);
+
+      // Clear the pending upload data
+      sessionStorage.removeItem("pendingUpload");
+      sessionStorage.removeItem("pendingUploadUrl");
+      delete (window as typeof window & { __pendingFile?: File }).__pendingFile;
+
+      // Process the file
+      processFile(pendingFile);
+    }
+  }, [initialLoadDone]);
 
   const processFile = async (file: File) => {
     setIsProcessing(true);
