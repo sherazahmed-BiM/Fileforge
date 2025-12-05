@@ -585,7 +585,10 @@ export default function LandingPage() {
 
             {/* Right Actions */}
             <div className="flex items-center gap-3">
-              <button className="hidden sm:block px-4 py-2 text-sm font-display font-medium text-[#6B6B6B] hover:text-[#1A1A1A] transition-colors cursor-pointer">
+              <button
+                onClick={() => router.push("/login")}
+                className="hidden sm:block px-4 py-2 text-sm font-display font-medium text-[#6B6B6B] hover:text-[#1A1A1A] transition-colors cursor-pointer"
+              >
                 Log in
               </button>
               <button
