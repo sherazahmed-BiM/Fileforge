@@ -1,7 +1,8 @@
 """
 Document Processor for FileForge
 
-Processes PDF files and extracts text content.
+Processes multiple document formats and extracts text content.
+Supports: PDF, DOCX, XLSX, PPTX, HTML, Markdown, images (OCR), and more.
 """
 
 import hashlib
@@ -13,11 +14,24 @@ from packages.common.services.conversion.extractors.base import (
     ExtractionResult,
     ElementType,
 )
-from packages.common.services.conversion.extractors.pdf_extractor import PDFExtractor
 from packages.common.core.logging import get_logger
 
 
 logger = get_logger(__name__)
+
+# All supported file extensions
+SUPPORTED_EXTENSIONS = {
+    # Documents
+    ".pdf", ".docx", ".xlsx", ".pptx",
+    # Markup
+    ".html", ".htm", ".xhtml", ".md", ".markdown", ".adoc", ".asciidoc",
+    # Data
+    ".csv", ".vtt", ".xml", ".json",
+    # Images (OCR supported)
+    ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp", ".webp", ".gif",
+    # Audio
+    ".wav", ".mp3",
+}
 
 
 @dataclass
@@ -81,6 +95,14 @@ class ProcessingResult:
         # Convert to sorted list
         pages = [pages_data[p] for p in sorted(pages_data.keys())]
 
+        # If no pages found, create a single page with all text
+        if not pages and self.extraction.raw_text:
+            pages = [{
+                "page_number": 1,
+                "text": self.extraction.raw_text,
+                "images": [],
+            }]
+
         # Count total images
         total_images = sum(len(p["images"]) for p in pages)
 
@@ -94,7 +116,7 @@ class ProcessingResult:
             },
             "pages": pages,
             "statistics": {
-                "page_count": self.page_count,
+                "page_count": self.page_count or len(pages),
                 "word_count": self.word_count,
                 "image_count": total_images,
             },
@@ -105,10 +127,10 @@ class ProcessingResult:
 
 class DocumentProcessor:
     """
-    Document processor for extracting text from PDFs.
+    Document processor for extracting text from multiple file formats.
 
     Uses Docling as the primary extraction service.
-    Falls back to PyMuPDF only if Docling is unavailable.
+    Supports: PDF, DOCX, XLSX, PPTX, HTML, Markdown, CSV, images (OCR), audio, and more.
 
     Usage:
         processor = DocumentProcessor()
@@ -118,32 +140,32 @@ class DocumentProcessor:
 
     def __init__(self):
         """Initialize document processor with Docling as primary."""
-        self._pdf_extractor = None
+        self._extractor = None
 
     @property
-    def pdf_extractor(self) -> PDFExtractor:
-        """Lazy load PDF extractor (Docling primary, PyMuPDF fallback)."""
-        if self._pdf_extractor is None:
-            # Try Docling first (primary service)
+    def extractor(self):
+        """Lazy load document extractor (Docling)."""
+        if self._extractor is None:
             try:
                 from packages.common.services.conversion.extractors.docling_extractor import (
                     DoclingExtractor,
                 )
-                self._pdf_extractor = DoclingExtractor()
-                logger.info("Using Docling (primary) for PDF extraction")
+                self._extractor = DoclingExtractor()
+                logger.info("Using Docling for document extraction")
             except (ImportError, Exception) as e:
-                logger.warning(
-                    f"Docling not available, falling back to PyMuPDF: {e}"
-                )
-                self._pdf_extractor = PDFExtractor()
-        return self._pdf_extractor
+                logger.warning(f"Docling not available: {e}")
+                # Fall back to PDF-only extractor if Docling fails
+                from packages.common.services.conversion.extractors.pdf_extractor import PDFExtractor
+                self._extractor = PDFExtractor()
+                logger.info("Falling back to PyMuPDF (PDF only)")
+        return self._extractor
 
     def process(self, file_path: str | Path, **options: Any) -> ProcessingResult:
         """
-        Process a PDF file and extract text.
+        Process a document file and extract text.
 
         Args:
-            file_path: Path to the PDF file
+            file_path: Path to the document file
             **options: Additional options (reserved for future use)
 
         Returns:
@@ -158,20 +180,24 @@ class DocumentProcessor:
 
         # Check file type
         ext = file_path.suffix.lower()
-        if ext != ".pdf":
-            raise ValueError(f"Only PDF files are supported. Got: {ext}")
+        if ext not in SUPPORTED_EXTENSIONS:
+            supported_list = ", ".join(sorted(SUPPORTED_EXTENSIONS))
+            raise ValueError(f"Unsupported file format: {ext}. Supported: {supported_list}")
 
         # Get file info
         file_size = file_path.stat().st_size
         file_hash = self._compute_hash(file_path)
 
+        # Determine file type (without dot)
+        file_type = ext[1:] if ext.startswith(".") else ext
+
         # Extract text
-        extraction_result = self.pdf_extractor.extract(file_path)
+        extraction_result = self.extractor.extract(file_path)
 
         # Build result
         result = ProcessingResult(
             filename=file_path.name,
-            file_type="pdf",
+            file_type=file_type,
             file_size_bytes=file_size,
             file_hash=file_hash,
             extraction=extraction_result,

@@ -71,31 +71,46 @@ function ArrowRightIcon({ className }: { className?: string }) {
   );
 }
 
-// Supported file types
+// Supported file types matching backend (Docling)
 const ACCEPTED_EXTENSIONS = [
-  ".pdf", ".docx", ".doc", ".xlsx", ".xls", ".pptx", ".ppt",
-  ".txt", ".md", ".html", ".csv", ".json", ".xml",
-  ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff"
+  // Documents
+  ".pdf", ".docx", ".xlsx", ".pptx",
+  // Markup
+  ".html", ".htm", ".xhtml", ".md", ".markdown", ".adoc", ".asciidoc",
+  // Data
+  ".csv", ".vtt", ".json", ".xml",
+  // Images (OCR supported)
+  ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".tif", ".webp",
+  // Audio
+  ".wav", ".mp3"
 ];
 
 const ACCEPTED_MIME_TYPES = [
+  // Documents
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/msword",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "text/plain",
-  "text/markdown",
+  // Markup
   "text/html",
+  "application/xhtml+xml",
+  "text/markdown",
+  "text/asciidoc",
+  // Data
   "text/csv",
+  "text/vtt",
   "application/json",
   "application/xml",
+  // Images
   "image/png",
   "image/jpeg",
   "image/gif",
   "image/bmp",
-  "image/tiff"
+  "image/tiff",
+  "image/webp",
+  // Audio
+  "audio/wav",
+  "audio/mpeg"
 ];
 
 interface UploadedFile {

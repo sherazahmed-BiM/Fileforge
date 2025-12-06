@@ -1,7 +1,8 @@
 """
 Local Converter Service for FileForge
 
-Handles PDF text extraction using local processing only.
+Handles document text extraction using local processing only.
+Supports multiple file formats via Docling.
 """
 
 import uuid
@@ -19,12 +20,27 @@ from packages.common.services.conversion.processor import DocumentProcessor
 
 logger = get_logger(__name__)
 
+# All supported file extensions
+SUPPORTED_EXTENSIONS = {
+    # Documents
+    ".pdf", ".docx", ".xlsx", ".pptx",
+    # Markup
+    ".html", ".htm", ".xhtml", ".md", ".markdown", ".adoc", ".asciidoc",
+    # Data
+    ".csv", ".vtt", ".xml", ".json",
+    # Images (OCR supported)
+    ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp", ".webp", ".gif",
+    # Audio
+    ".wav", ".mp3",
+}
+
 
 class LocalConverterService:
     """
-    Service for extracting text from PDF files.
+    Service for extracting text from document files.
 
-    Uses local processing only - no external API calls.
+    Uses Docling for local processing - no external API calls.
+    Supports: PDF, DOCX, XLSX, PPTX, HTML, Markdown, images (OCR), and more.
     """
 
     def __init__(self, db: AsyncSession):
@@ -34,10 +50,10 @@ class LocalConverterService:
 
     async def extract_text(self, file: UploadFile) -> dict[str, Any]:
         """
-        Extract text from a PDF file.
+        Extract text from a document file.
 
         Args:
-            file: Uploaded PDF file
+            file: Uploaded document file
 
         Returns:
             Dictionary with extracted text organized by page
@@ -47,11 +63,12 @@ class LocalConverterService:
             raise ValueError("Filename is required")
 
         file_ext = Path(file.filename).suffix.lower()
-        if file_ext != ".pdf":
-            raise ValueError(f"Only PDF files are supported. Got: {file_ext}")
+        if file_ext not in SUPPORTED_EXTENSIONS:
+            supported_list = ", ".join(sorted(SUPPORTED_EXTENSIONS))
+            raise ValueError(f"Unsupported file format: {file_ext}. Supported: {supported_list}")
 
-        # Generate unique filename
-        unique_filename = f"{uuid.uuid4()}.pdf"
+        # Generate unique filename preserving extension
+        unique_filename = f"{uuid.uuid4()}{file_ext}"
 
         # Ensure upload directory exists
         upload_dir = Path(settings.upload_dir)

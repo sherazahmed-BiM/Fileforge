@@ -93,7 +93,7 @@ export function FileSidebar({
           ref={fileInputRef}
           type="file"
           className="hidden"
-          accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.txt,.md,.html,.csv,.json,.xml,.png,.jpg,.jpeg"
+          accept=".pdf,.docx,.xlsx,.pptx,.html,.htm,.xhtml,.md,.markdown,.adoc,.asciidoc,.csv,.vtt,.json,.xml,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.tif,.webp,.wav,.mp3"
           multiple
           onChange={handleFileInput}
         />

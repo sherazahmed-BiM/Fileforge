@@ -9,25 +9,32 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
 
-// Supported file types matching backend
+// Supported file types matching backend (Docling)
 const ACCEPTED_FILE_TYPES = {
+  // Documents
   "application/pdf": [".pdf"],
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
-  "application/msword": [".doc"],
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
-  "application/vnd.ms-excel": [".xls"],
   "application/vnd.openxmlformats-officedocument.presentationml.presentation": [".pptx"],
-  "text/plain": [".txt"],
-  "text/markdown": [".md"],
-  "text/html": [".html", ".htm"],
+  // Markup
+  "text/html": [".html", ".htm", ".xhtml"],
+  "text/markdown": [".md", ".markdown"],
+  "text/asciidoc": [".adoc", ".asciidoc"],
+  // Data
   "text/csv": [".csv"],
+  "text/vtt": [".vtt"],
   "application/json": [".json"],
   "application/xml": [".xml"],
+  // Images (OCR supported)
   "image/png": [".png"],
   "image/jpeg": [".jpg", ".jpeg"],
   "image/gif": [".gif"],
   "image/bmp": [".bmp"],
-  "image/tiff": [".tiff"],
+  "image/tiff": [".tiff", ".tif"],
+  "image/webp": [".webp"],
+  // Audio
+  "audio/wav": [".wav"],
+  "audio/mpeg": [".mp3"],
 };
 
 interface FileWithProgress {

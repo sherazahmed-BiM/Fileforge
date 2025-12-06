@@ -16,7 +16,11 @@
       "Bash(curl:*)",
       "Bash(ls:*)",
       "Bash(pkill:*)",
-      "Bash(uv add:*)"
+      "Bash(uv add:*)",
+      "Bash(docker compose ps:*)",
+      "Bash(set PYTHONIOENCODING=utf-8:*)",
+      "Bash(uv run celery:*)",
+      "Bash(npm run dev:*)"
     ],
     "deny": [],
     "ask": []

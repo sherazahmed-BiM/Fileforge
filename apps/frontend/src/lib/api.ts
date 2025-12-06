@@ -70,20 +70,29 @@ export async function convertFile(
     formData.append("ocr_enabled", options.ocr_enabled.toString());
   }
 
-  const response = await fetch(getApiUrl(API_CONFIG.endpoints.convert), {
-    method: "POST",
-    body: formData,
-  });
+  // Use AbortController for 10-minute timeout (first run downloads ML models)
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minutes
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new ApiError(
-      response.status,
-      errorData.detail || "File upload failed"
-    );
+  try {
+    const response = await fetch(getApiUrl(API_CONFIG.endpoints.convert), {
+      method: "POST",
+      body: formData,
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(
+        response.status,
+        errorData.detail || "File upload failed"
+      );
+    }
+
+    return response.json();
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  return response.json();
 }
 
 export async function convertFileSync(
@@ -109,20 +118,29 @@ export async function convertFileSync(
     formData.append("ocr_enabled", options.ocr_enabled.toString());
   }
 
-  const response = await fetch(getApiUrl(API_CONFIG.endpoints.convertSync), {
-    method: "POST",
-    body: formData,
-  });
+  // Use AbortController for 10-minute timeout (first run downloads ML models)
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minutes
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new ApiError(
-      response.status,
-      errorData.detail || "File conversion failed"
-    );
+  try {
+    const response = await fetch(getApiUrl(API_CONFIG.endpoints.convertSync), {
+      method: "POST",
+      body: formData,
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(
+        response.status,
+        errorData.detail || "File conversion failed"
+      );
+    }
+
+    return response.json();
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  return response.json();
 }
 
 export async function getConversionStatus(id: number): Promise<Document> {
@@ -134,20 +152,29 @@ export async function extractPDFText(file: File): Promise<PDFExtractionResponse>
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(getApiUrl(API_CONFIG.endpoints.convertLocal), {
-    method: "POST",
-    body: formData,
-  });
+  // Use AbortController for 10-minute timeout (first run downloads ML models)
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minutes
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new ApiError(
-      response.status,
-      errorData.detail || "PDF text extraction failed"
-    );
+  try {
+    const response = await fetch(getApiUrl(API_CONFIG.endpoints.convertLocal), {
+      method: "POST",
+      body: formData,
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(
+        response.status,
+        errorData.detail || "PDF text extraction failed"
+      );
+    }
+
+    return response.json();
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  return response.json();
 }
 
 export async function getSupportedFormats(): Promise<SupportedFormat[]> {

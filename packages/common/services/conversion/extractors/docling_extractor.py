@@ -4,6 +4,21 @@ Docling-based Extractor for FileForge
 Uses Docling for high-accuracy document text and image extraction.
 Supports multiple file formats: PDF, DOCX, XLSX, PPTX, HTML, Markdown, images, and more.
 Docling provides superior document understanding with layout analysis.
+
+Supported formats and extraction strategies:
+- PDF: Full layout analysis, tables, images, OCR support
+- DOCX: Word documents with formatting preserved
+- XLSX: Excel spreadsheets exported as markdown tables
+- PPTX: PowerPoint presentations with slide content
+- HTML/HTM/XHTML: Web pages with structure preserved
+- MD/Markdown: Markdown files passed through
+- CSV: Tabular data as markdown tables
+- Images (PNG, JPG, JPEG, TIFF, BMP, WEBP, GIF): OCR text extraction
+- Audio (WAV, MP3): Transcription (if supported)
+- AsciiDoc: Documentation format
+- VTT: Video captions/subtitles
+- XML: Structured data extraction
+- JSON: Docling JSON format
 """
 
 import base64
@@ -62,10 +77,12 @@ def _get_input_format(file_path: Path) -> Optional[Any]:
     """Map file extension to Docling InputFormat."""
     if _InputFormat is None:
         return None
-    
+
     ext = file_path.suffix.lower()
-    
+
     # Map extensions to InputFormat enum values
+    # Based on Docling 2.64.0: ASCIIDOC, AUDIO, CSV, DOCX, HTML, IMAGE,
+    # JSON_DOCLING, MD, METS_GBS, PDF, PPTX, VTT, XLSX, XML_JATS, XML_USPTO
     format_map = {
         # Documents
         '.pdf': _InputFormat.PDF,
@@ -75,31 +92,62 @@ def _get_input_format(file_path: Path) -> Optional[Any]:
         # Markup
         '.html': _InputFormat.HTML,
         '.htm': _InputFormat.HTML,
-        '.xhtml': _InputFormat.XHTML,
-        '.md': _InputFormat.MARKDOWN,
-        '.markdown': _InputFormat.MARKDOWN,
+        '.xhtml': _InputFormat.HTML,  # Use HTML for XHTML
+        '.md': _InputFormat.MD,
+        '.markdown': _InputFormat.MD,
         '.adoc': _InputFormat.ASCIIDOC,
         '.asciidoc': _InputFormat.ASCIIDOC,
         # Data
         '.csv': _InputFormat.CSV,
-        # Images
-        '.png': _InputFormat.PNG,
-        '.jpg': _InputFormat.JPEG,
-        '.jpeg': _InputFormat.JPEG,
-        '.tiff': _InputFormat.TIFF,
-        '.tif': _InputFormat.TIFF,
-        '.bmp': _InputFormat.BMP,
-        '.webp': _InputFormat.WEBP,
+        '.vtt': _InputFormat.VTT,
+        # Images (all use IMAGE type)
+        '.png': _InputFormat.IMAGE,
+        '.jpg': _InputFormat.IMAGE,
+        '.jpeg': _InputFormat.IMAGE,
+        '.tiff': _InputFormat.IMAGE,
+        '.tif': _InputFormat.IMAGE,
+        '.bmp': _InputFormat.IMAGE,
+        '.webp': _InputFormat.IMAGE,
+        '.gif': _InputFormat.IMAGE,
         # Audio
-        '.wav': _InputFormat.WAV,
-        '.mp3': _InputFormat.MP3,
+        '.wav': _InputFormat.AUDIO,
+        '.mp3': _InputFormat.AUDIO,
         # XML formats
-        '.xml': _InputFormat.USPTO_XML,  # Default, may need detection
+        '.xml': _InputFormat.XML_USPTO,
         # Docling JSON
-        '.json': _InputFormat.DOCLING_JSON,
+        '.json': _InputFormat.JSON_DOCLING,
     }
-    
+
     return format_map.get(ext)
+
+
+def _get_format_category(input_format) -> str:
+    """Get the category of a file format for logging and processing hints."""
+    if _InputFormat is None:
+        return "unknown"
+
+    if input_format == _InputFormat.PDF:
+        return "document"
+    elif input_format in (_InputFormat.DOCX, _InputFormat.PPTX):
+        return "office"
+    elif input_format == _InputFormat.XLSX:
+        return "spreadsheet"
+    elif input_format == _InputFormat.CSV:
+        return "tabular"
+    elif input_format in (_InputFormat.HTML, _InputFormat.MD, _InputFormat.ASCIIDOC):
+        return "markup"
+    elif input_format == _InputFormat.IMAGE:
+        return "image"
+    elif input_format == _InputFormat.AUDIO:
+        return "audio"
+    elif input_format == _InputFormat.VTT:
+        return "caption"
+    elif input_format in (_InputFormat.XML_USPTO, _InputFormat.XML_JATS):
+        return "xml"
+    elif input_format == _InputFormat.JSON_DOCLING:
+        return "json"
+    else:
+        return "other"
 
 
 class DoclingExtractor(BaseExtractor):
@@ -168,16 +216,16 @@ class DoclingExtractor(BaseExtractor):
     def _get_converter(self, file_path: Path):
         """Get or create converter for specific file format."""
         input_format = _get_input_format(file_path)
-        
+
         if input_format is None:
             raise ValueError(f"Unsupported file format: {file_path.suffix}")
-        
+
         format_key = str(input_format)
-        
+
         if format_key not in self._converters:
             # Configure format-specific options
             format_options = {}
-            
+
             # PDF-specific options
             if input_format == _InputFormat.PDF:
                 pipeline_options = _PdfPipelineOptions()
@@ -185,19 +233,21 @@ class DoclingExtractor(BaseExtractor):
                 pipeline_options.do_table_structure = self.enable_tables
                 pipeline_options.generate_picture_images = self.generate_images
                 pipeline_options.images_scale = self.images_scale
-                
+
                 format_options[input_format] = _PdfFormatOption(
                     pipeline_options=pipeline_options
                 )
+            # For other formats, don't add to format_options - use defaults
+
+            # Create converter - only pass format_options if we have PDF-specific config
+            if format_options:
+                self._converters[format_key] = _DocumentConverter(
+                    format_options=format_options
+                )
             else:
-                # For other formats, use default options
-                # Docling handles OCR automatically for images
-                format_options[input_format] = None
-            
-            self._converters[format_key] = _DocumentConverter(
-                format_options=format_options if format_options else None
-            )
-        
+                # Use default converter for non-PDF formats
+                self._converters[format_key] = _DocumentConverter()
+
         return self._converters[format_key]
 
     def extract(
@@ -253,15 +303,48 @@ class DoclingExtractor(BaseExtractor):
             page_texts: dict[int, list[str]] = {}
             page_images: list[ExtractedElement] = []
 
-            # Iterate through document items
-            for item, level in doc.iterate_items():
-                item_page = self._get_item_page(item)
+            # First, try to export the entire document as markdown (most reliable)
+            # This works for CSV, XLSX, and most other formats
+            try:
+                markdown_text = doc.export_to_markdown()
+                if markdown_text and markdown_text.strip():
+                    page_texts[1] = [markdown_text]
+                    logger.info(f"Extracted {len(markdown_text)} chars via markdown export")
+            except Exception as e:
+                logger.warning(f"Markdown export failed: {e}")
 
-                # Handle text items
-                if hasattr(item, 'text') and item.text:
-                    if item_page not in page_texts:
-                        page_texts[item_page] = []
-                    page_texts[item_page].append(item.text)
+            # If markdown export didn't work, try iterate_items
+            if not page_texts:
+                for item, level in doc.iterate_items():
+                    item_page = self._get_item_page(item)
+
+                    # Handle text items
+                    if hasattr(item, 'text') and item.text:
+                        if item_page not in page_texts:
+                            page_texts[item_page] = []
+                        page_texts[item_page].append(item.text)
+
+            # Also extract tables (important for CSV, XLSX, etc.)
+            if not page_texts and hasattr(doc, 'tables') and doc.tables:
+                for table in doc.tables:
+                    table_page = self._get_item_page(table)
+                    if table_page not in page_texts:
+                        page_texts[table_page] = []
+
+                    # Try to export table as markdown or text
+                    try:
+                        if hasattr(table, 'export_to_markdown'):
+                            table_text = table.export_to_markdown()
+                        elif hasattr(table, 'text') and table.text:
+                            table_text = table.text
+                        else:
+                            # Fallback: try to get data from table cells
+                            table_text = self._extract_table_text(table)
+
+                        if table_text:
+                            page_texts[table_page].append(table_text)
+                    except Exception as e:
+                        logger.warning(f"Failed to extract table: {e}")
 
             # Create text elements per page
             for page_num in sorted(page_texts.keys()):
@@ -292,9 +375,7 @@ class DoclingExtractor(BaseExtractor):
                 if el.element_type == ElementType.TEXT
             )
             if total_text < 100 and page_count > 0:
-                if input_format in (_InputFormat.PDF, _InputFormat.PNG, 
-                                   _InputFormat.JPEG, _InputFormat.TIFF, 
-                                   _InputFormat.BMP, _InputFormat.WEBP):
+                if input_format in (_InputFormat.PDF, _InputFormat.IMAGE):
                     warnings.append(
                         f"Document has very little extractable text. "
                         f"Consider enabling OCR for scanned documents or images."
@@ -425,6 +506,33 @@ class DoclingExtractor(BaseExtractor):
             logger.warning(f"Failed to extract picture {index}: {e}")
 
         return None
+
+    def _extract_table_text(self, table) -> str:
+        """Extract text from table cells as a fallback."""
+        try:
+            rows = []
+            if hasattr(table, 'data') and table.data:
+                # Try to access table data as a grid
+                data = table.data
+                if hasattr(data, 'grid'):
+                    for row in data.grid:
+                        row_texts = []
+                        for cell in row:
+                            if hasattr(cell, 'text'):
+                                row_texts.append(str(cell.text))
+                            elif isinstance(cell, str):
+                                row_texts.append(cell)
+                        if row_texts:
+                            rows.append(" | ".join(row_texts))
+                elif isinstance(data, list):
+                    for row in data:
+                        if isinstance(row, list):
+                            row_texts = [str(cell) for cell in row]
+                            rows.append(" | ".join(row_texts))
+            return "\n".join(rows)
+        except Exception as e:
+            logger.warning(f"Failed to extract table text: {e}")
+            return ""
 
 
 # Keep backward compatibility alias
