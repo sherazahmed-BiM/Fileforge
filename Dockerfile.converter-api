@@ -1,9 +1,11 @@
 # FileForge Converter API Dockerfile
-# Multi-stage build for smaller image size
+# Lightweight build for Railway deployment
 
-FROM python:3.11-slim as builder
+FROM python:3.11-slim
 
-# Install system dependencies for unstructured and document parsing
+# Install uv and minimal runtime dependencies
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
@@ -11,66 +13,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     poppler-utils \
     tesseract-ocr \
     tesseract-ocr-eng \
-    libreoffice \
-    pandoc \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
-# Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
-
-# Set working directory
 WORKDIR /app
 
-# Copy dependency files (use prod config for lighter image)
+# Copy dependency files
 COPY pyproject.prod.toml ./pyproject.toml
 COPY README.md ./
 
-# Install dependencies (not frozen since we use different pyproject)
-RUN uv sync --no-dev
-
-# Production stage
-FROM python:3.11-slim
-
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 \
-    libmagic1 \
-    poppler-utils \
-    tesseract-ocr \
-    tesseract-ocr-eng \
-    libreoffice \
-    pandoc \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create non-root user
-RUN useradd --create-home --shell /bin/bash appuser
-
-WORKDIR /app
-
-# Copy virtual environment from builder
-COPY --from=builder /app/.venv /app/.venv
+# Install dependencies
+RUN uv sync --no-dev && rm -rf /root/.cache
 
 # Copy application code
 COPY packages/ ./packages/
 COPY apps/ ./apps/
 COPY infra/alembic/ ./infra/alembic/
 
-# Set ownership
-RUN chown -R appuser:appuser /app
-
-USER appuser
-
 # Set environment
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH="/app"
 ENV PYTHONUNBUFFERED=1
 
-# Expose port (Railway uses $PORT, local uses 19000)
-EXPOSE ${PORT:-19000}
-
-# Health check (disabled for Railway - it has its own)
-# HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-#     CMD python -c "import httpx; httpx.get('http://localhost:${PORT:-19000}/health')" || exit 1
-
-# Run the application (Railway sets $PORT, defaults to 19000 for local)
+# Run the application (Railway sets $PORT)
 CMD uvicorn apps.converter_api.main:app --host 0.0.0.0 --port ${PORT:-19000}
