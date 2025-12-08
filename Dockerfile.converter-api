@@ -1,29 +1,23 @@
 # FileForge Converter API Dockerfile
-# Lightweight build for Railway deployment
+# Minimal build for Railway deployment
 
 FROM python:3.11-slim
 
-# Install uv and minimal runtime dependencies
+# Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
+# Minimal system deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libpq-dev \
+    libpq5 \
     libmagic1 \
-    poppler-utils \
-    tesseract-ocr \
-    tesseract-ocr-eng \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy dependency files
+# Copy and install dependencies
 COPY pyproject.prod.toml ./pyproject.toml
 COPY README.md ./
-
-# Install dependencies
-RUN uv sync --no-dev && rm -rf /root/.cache
+RUN uv sync --no-dev --no-cache
 
 # Copy application code
 COPY packages/ ./packages/
@@ -35,5 +29,5 @@ ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH="/app"
 ENV PYTHONUNBUFFERED=1
 
-# Run the application (Railway sets $PORT)
+# Run
 CMD uvicorn apps.converter_api.main:app --host 0.0.0.0 --port ${PORT:-19000}

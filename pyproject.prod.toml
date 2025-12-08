@@ -25,14 +25,12 @@ dependencies = [
     "pydantic-settings>=2.6.0",
     # HTTP clients
     "httpx>=0.28.0",
-    # Document parsing - Lightweight stack (no ML)
+    # Document parsing - Minimal lightweight stack
     "pymupdf>=1.24.0",           # PDF extraction (fast, local)
-    "pdfplumber>=0.11.0",        # PDF table extraction
     "python-docx>=1.1.0",        # DOCX extraction
     "openpyxl>=3.1.0",           # Excel extraction
     "pandas>=2.2.0",             # CSV/data handling
     "pillow>=10.0.0",            # Image handling
-    "pytesseract>=0.3.10",       # OCR (requires Tesseract installed)
     # Chunking & Tokenization
     "tiktoken>=0.8.0",           # Token counting (OpenAI tokenizer)
     # Utilities
@@ -40,8 +38,6 @@ dependencies = [
     "python-multipart>=0.0.18",  # File uploads
     "python-magic>=0.4.27",      # File type detection
     "aiofiles>=24.1.0",          # Async file operations
-    # Docling without heavy ML deps (no VLM, basic OCR)
-    "docling>=2.64.0",
 ]
 
 [build-system]
