@@ -85,7 +85,7 @@ dmypy.json
 .ruff_cache/
 
 # UV
-uv.lock
+# uv.lock  # Needed for Railway deployment
 
 # Project specific
 uploads/
