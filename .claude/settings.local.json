@@ -20,7 +20,8 @@
       "Bash(docker compose ps:*)",
       "Bash(set PYTHONIOENCODING=utf-8:*)",
       "Bash(uv run celery:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "WebFetch(domain:pypi.org)"
     ],
     "deny": [],
     "ask": []

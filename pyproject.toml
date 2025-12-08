@@ -49,14 +49,13 @@ dependencies = [
     "python-multipart>=0.0.18",  # File uploads
     "python-magic>=0.4.27",      # File type detection
     "aiofiles>=24.1.0",          # Async file operations
-    # Docling with OCR support (for scanned documents)
-    # Note: For full OCR capabilities, you may also need:
-    # - Python < 3.14: rapidocr, onnxruntime (default)
-    # - Python >= 3.14: easyocr (default)
-    # - Or install tesseract system package + tesserocr for Tesseract OCR
-    "docling[ocr]>=2.64.0",      # Docling with OCR support
-    # Optional: Add [vlm] for Vision Language Model support
-    # "docling[ocr,vlm]>=2.64.0",  # Full docling with OCR and VLM
+    # Docling with OCR (EasyOCR) and VLM support (for maximum accuracy)
+    # OCR extras: easyocr, tesserocr, rapidocr, ocrmac
+    # VLM: Uses GraniteDocling (ibm-granite/granite-vision-3.2-2b) for:
+    #   - Picture/image description and understanding
+    #   - Complex document layout analysis
+    #   - End-to-end document understanding
+    "docling[easyocr,vlm]>=2.64.0",  # Full Docling with EasyOCR and VLM support
 ]
 
 [dependency-groups]

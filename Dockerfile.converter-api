@@ -64,12 +64,12 @@ ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH="/app"
 ENV PYTHONUNBUFFERED=1
 
-# Expose port
-EXPOSE 19000
+# Expose port (Railway uses $PORT, local uses 19000)
+EXPOSE ${PORT:-19000}
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import httpx; httpx.get('http://localhost:19000/health')" || exit 1
+# Health check (disabled for Railway - it has its own)
+# HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+#     CMD python -c "import httpx; httpx.get('http://localhost:${PORT:-19000}/health')" || exit 1
 
-# Run the application
-CMD ["uvicorn", "apps.converter_api.main:app", "--host", "0.0.0.0", "--port", "19000"]
+# Run the application (Railway sets $PORT, defaults to 19000 for local)
+CMD uvicorn apps.converter_api.main:app --host 0.0.0.0 --port ${PORT:-19000}

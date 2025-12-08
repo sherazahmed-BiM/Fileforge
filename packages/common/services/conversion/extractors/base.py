@@ -83,6 +83,53 @@ class ExtractedElement:
 
 
 @dataclass
+class TableSchema:
+    """Schema definition for tabular data (CSV, XLSX)."""
+
+    columns: list[dict[str, Any]] = field(default_factory=list)
+    # Each column: {"name": str, "type": str, "nullable": bool}
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert schema to dictionary."""
+        return {"columns": self.columns}
+
+
+@dataclass
+class StructuredTableData:
+    """
+    Structured table data for CSV/XLSX files.
+
+    Provides LLM-ready format with schema and typed rows.
+    """
+
+    name: str = "data"
+    schema: TableSchema = field(default_factory=TableSchema)
+    rows: list[dict[str, Any]] = field(default_factory=list)
+    row_count: int = 0
+    column_count: int = 0
+    page_index: int = 0  # For pagination (0-based)
+    total_pages: int = 1
+
+    @property
+    def page_number(self) -> int:
+        """Get 1-based page number for display."""
+        return self.page_index + 1
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "name": self.name,
+            "schema": self.schema.to_dict(),
+            "rows": self.rows,
+            "row_count": self.row_count,
+            "column_count": self.column_count,
+            "page_number": self.page_number,  # 1-based for readability
+            "page_index": self.page_index,    # 0-based for programmatic use
+            "total_pages": self.total_pages,
+        }
+
+
+@dataclass
 class ExtractionResult:
     """
     Result of document extraction.
@@ -101,6 +148,9 @@ class ExtractionResult:
     # Processing info
     extraction_method: str = ""
     warnings: list[str] = field(default_factory=list)
+
+    # Structured data for tabular files (CSV, XLSX)
+    structured_data: Optional[list[StructuredTableData]] = None
 
     @property
     def element_count(self) -> int:

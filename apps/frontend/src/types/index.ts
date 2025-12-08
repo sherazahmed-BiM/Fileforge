@@ -141,6 +141,7 @@ export interface PDFDocument {
   file_type: string;
   file_size_bytes: number;
   file_hash: string;
+  format?: string;  // "structured_json" for CSV
   metadata?: Record<string, unknown>;
 }
 
@@ -150,10 +151,72 @@ export interface PDFStatistics {
   image_count: number;
 }
 
-export interface PDFExtractionResponse {
+// CSV/Structured data types
+export interface CSVColumnSchema {
+  name: string;
+  original_name: string;
+  type: string;  // "string" | "integer" | "number" | "date" | "boolean"
+  nullable: boolean;
+  index: number;
+}
+
+export interface CSVTableSchema {
+  columns: CSVColumnSchema[];
+}
+
+export interface CSVTable {
+  name: string;
+  schema: CSVTableSchema;
+  rows: Record<string, unknown>[];
+  row_count: number;
+  column_count: number;
+  page_index: number;
+  total_pages: number;
+}
+
+export interface CSVSummary {
+  total_rows: number;
+  total_columns: number;
+  columns: string[];
+  column_types: Record<string, string>;
+  total_pages: number;
+  rows_per_page: number;
+}
+
+export interface CSVOrigin {
+  source_type: string;
+  delimiter: string;
+  encoding: string;
+}
+
+export interface CSVExtractionResponse {
+  document: PDFDocument;
+  summary: CSVSummary;
+  tables: CSVTable[];
+  origin?: CSVOrigin;
+  markdown?: string;  // Markdown table format from Docling
+  extraction_method: string;
+  warnings: string[];
+}
+
+// Standard document extraction response
+export interface DocumentExtractionResponse {
   document: PDFDocument;
   pages: PDFPage[];
   statistics: PDFStatistics;
   extraction_method: string;
   warnings: string[];
+}
+
+// Union type for all extraction responses
+export type PDFExtractionResponse = DocumentExtractionResponse | CSVExtractionResponse;
+
+// Type guard to check if response is CSV
+export function isCSVResponse(response: PDFExtractionResponse): response is CSVExtractionResponse {
+  return 'tables' in response && 'summary' in response;
+}
+
+// Type guard to check if response is document
+export function isDocumentResponse(response: PDFExtractionResponse): response is DocumentExtractionResponse {
+  return 'pages' in response && 'statistics' in response;
 }

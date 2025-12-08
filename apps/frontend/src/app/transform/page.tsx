@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { FileSidebar } from "@/components/transform/file-sidebar";
 import { FilePreview } from "@/components/transform/file-preview";
 import { TextResultPanel } from "@/components/transform/text-result-panel";
 import { extractPDFText } from "@/lib/api";
 import type { PDFExtractionResponse } from "@/types";
+import { isDocumentResponse } from "@/types";
 
 // Custom SVG Icons - Matching landing page style
 function LogoMark({ className }: { className?: string }) {
@@ -56,7 +57,50 @@ export default function TransformPage() {
   const [error, setError] = useState<string | null>(null);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
 
+  // Resizable panel state
+  const [panelWidth, setPanelWidth] = useState(480);
+  const [isResizing, setIsResizing] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const selectedFile = files.find((f) => f.id === selectedFileId);
+
+  // Handle panel resize
+  const handleResizeStart = useCallback(() => {
+    setIsResizing(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!containerRef.current) return;
+
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const newWidth = containerRect.right - e.clientX;
+
+      // Clamp between min (320px) and max (800px)
+      const clampedWidth = Math.max(320, Math.min(800, newWidth));
+      setPanelWidth(clampedWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+
+    // Prevent text selection while resizing
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+    };
+  }, [isResizing]);
 
   // Check for pending upload from upload page
   useEffect(() => {
@@ -192,7 +236,7 @@ export default function TransformPage() {
       </header>
 
       {/* Main content */}
-      <div className="flex-1 flex min-h-0">
+      <div ref={containerRef} className="flex-1 flex min-h-0">
         {/* File sidebar */}
         <FileSidebar
           files={files}
@@ -208,14 +252,16 @@ export default function TransformPage() {
           fileUrl={selectedFile?.objectUrl || null}
           fileName={selectedFile?.name || null}
           fileType={selectedFile?.type || null}
-          totalPages={result?.statistics?.page_count || 1}
+          totalPages={result && isDocumentResponse(result) ? result.statistics.page_count : 1}
         />
 
-        {/* Result panel - text extraction */}
+        {/* Result panel - text extraction (resizable) */}
         <TextResultPanel
           result={result}
           isLoading={isProcessing}
           error={error}
+          width={panelWidth}
+          onResizeStart={handleResizeStart}
         />
       </div>
     </div>

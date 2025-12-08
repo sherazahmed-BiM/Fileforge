@@ -13,6 +13,7 @@ from typing import Any
 from packages.common.services.conversion.extractors.base import (
     ExtractionResult,
     ElementType,
+    StructuredTableData,
 )
 from packages.common.core.logging import get_logger
 
@@ -65,6 +66,70 @@ class ProcessingResult:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary format with text and images organized by page."""
+        # Check if this is structured tabular data (CSV/XLSX)
+        if self.extraction.structured_data:
+            return self._to_structured_dict()
+
+        # Standard document processing
+        return self._to_document_dict()
+
+    def _to_structured_dict(self) -> dict[str, Any]:
+        """Convert structured tabular data (CSV) to LLM-ready JSON format."""
+        structured = self.extraction.structured_data
+        if not structured:
+            return self._to_document_dict()
+
+        # Get summary from metadata
+        summary = self.extraction.metadata.get("csv_summary", {})
+
+        # Build tables array with native JSON objects (not strings)
+        tables = []
+        for table in structured:
+            tables.append({
+                "name": table.name,
+                "schema": table.schema.to_dict(),
+                "rows": table.rows,  # Native JSON objects
+                "row_count": table.row_count,
+                "column_count": table.column_count,
+                "page_number": table.page_number,  # 1-based for readability
+                "page_index": table.page_index,    # 0-based for programmatic use
+                "total_pages": table.total_pages,
+            })
+
+        # Build the output structure
+        result = {
+            "document": {
+                "filename": self.filename,
+                "file_type": self.file_type,
+                "file_size_bytes": self.file_size_bytes,
+                "file_hash": self.file_hash,
+                "format": "structured_json",
+            },
+            "summary": {
+                "total_rows": summary.get("total_rows", 0),
+                "total_columns": summary.get("total_columns", 0),
+                "columns": summary.get("columns", []),
+                "column_types": summary.get("column_types", {}),
+                "total_pages": summary.get("pages", 1),
+                "rows_per_page": summary.get("rows_per_page", 500),
+            },
+            "tables": tables,
+            "extraction_method": self.extraction.extraction_method,
+            "warnings": self.warnings + self.extraction.warnings,
+        }
+
+        # Add origin metadata if available
+        if "origin" in summary:
+            result["origin"] = summary["origin"]
+
+        # Add markdown version if available
+        if "markdown" in self.extraction.metadata:
+            result["markdown"] = self.extraction.metadata["markdown"]
+
+        return result
+
+    def _to_document_dict(self) -> dict[str, Any]:
+        """Convert standard document to dictionary format with text and images by page."""
         # Group elements by page
         pages_data: dict[int, dict[str, Any]] = {}
 

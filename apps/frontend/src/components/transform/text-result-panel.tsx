@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { PDFExtractionResponse } from "@/types";
+import type { PDFExtractionResponse, CSVExtractionResponse, DocumentExtractionResponse } from "@/types";
+import { isCSVResponse, isDocumentResponse } from "@/types";
 
 // Custom SVG Icons
 function DownloadIcon({ className }: { className?: string }) {
@@ -59,11 +60,30 @@ interface TextResultPanelProps {
   result: PDFExtractionResponse | null;
   isLoading: boolean;
   error: string | null;
+  width?: number;
+  onResizeStart?: () => void;
 }
 
-export function TextResultPanel({ result, isLoading, error }: TextResultPanelProps) {
-  const [activeTab, setActiveTab] = useState<"text" | "json">("text");
+export function TextResultPanel({ result, isLoading, error, width, onResizeStart }: TextResultPanelProps) {
+  const [activeTab, setActiveTab] = useState<"text" | "markdown" | "json">("text");
   const [copiedPage, setCopiedPage] = useState<number | null>(null);
+
+  // Check if markdown is available (for CSV or PDF/documents)
+  const hasMarkdown = Boolean(result && (
+    (isCSVResponse(result) && result.markdown) ||
+    (isDocumentResponse(result) && result.document.metadata?.markdown)
+  ));
+
+  // Get markdown content from either response type
+  const getMarkdownContent = (): string | null => {
+    if (!result) return null;
+    if (isCSVResponse(result)) return result.markdown || null;
+    if (isDocumentResponse(result)) return result.document.metadata?.markdown as string || null;
+    return null;
+  };
+
+  // Dynamic width style
+  const panelStyle = width ? { width: `${width}px` } : {};
 
   const handleDownload = () => {
     if (!result) return;
@@ -87,16 +107,64 @@ export function TextResultPanel({ result, isLoading, error }: TextResultPanelPro
 
   const handleCopyAll = async () => {
     if (!result) return;
-    const allText = result.pages.map(p => p.text).join("\n\n---\n\n");
+
+    let allText: string;
+    if (isCSVResponse(result)) {
+      // For CSV, copy as JSON
+      allText = JSON.stringify(result.tables.flatMap(t => t.rows), null, 2);
+    } else {
+      allText = result.pages.map(p => p.text).join("\n\n---\n\n");
+    }
+
     await navigator.clipboard.writeText(allText);
     setCopiedPage(-1); // -1 indicates "all"
     setTimeout(() => setCopiedPage(null), 2000);
   };
 
+  // Helper to get statistics from either response type
+  const getStats = () => {
+    if (!result) return { pageCount: 0, wordCount: 0, imageCount: 0, rowCount: 0, columnCount: 0, isCSV: false };
+
+    if (isCSVResponse(result)) {
+      return {
+        pageCount: result.summary.total_pages,
+        wordCount: 0,
+        imageCount: 0,
+        rowCount: result.summary.total_rows,
+        columnCount: result.summary.total_columns,
+        isCSV: true,
+      };
+    }
+
+    return {
+      pageCount: result.statistics.page_count,
+      wordCount: result.statistics.word_count,
+      imageCount: result.statistics.image_count,
+      rowCount: 0,
+      columnCount: 0,
+      isCSV: false,
+    };
+  };
+
+  // Resize handle component
+  const ResizeHandle = () => (
+    <div
+      className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-[#4A6B5A]/30 active:bg-[#4A6B5A]/50 transition-colors group z-10"
+      onMouseDown={onResizeStart}
+    >
+      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-16 bg-[#EDEAE4] group-hover:bg-[#4A6B5A] transition-colors rounded-r" />
+    </div>
+  );
+
+  // Base container classes
+  const containerClasses = "bg-white border-l-[2.5px] border-[#2C2C2C] flex flex-col shrink-0 relative";
+  const defaultWidth = width ? undefined : "w-[480px]";
+
   // Empty state
   if (!result && !isLoading && !error) {
     return (
-      <div className="w-[480px] bg-white border-l-[2.5px] border-[#2C2C2C] flex flex-col shrink-0">
+      <div className={`${defaultWidth} ${containerClasses}`} style={panelStyle}>
+        <ResizeHandle />
         <div className="h-14 flex items-center justify-between px-6 border-b-[2.5px] border-[#EDEAE4]">
           <h3 className="font-display font-bold text-[#1A1A1A]">Extracted Text</h3>
         </div>
@@ -118,7 +186,8 @@ export function TextResultPanel({ result, isLoading, error }: TextResultPanelPro
   // Error state
   if (error) {
     return (
-      <div className="w-[480px] bg-white border-l-[2.5px] border-[#2C2C2C] flex flex-col shrink-0">
+      <div className={`${defaultWidth} ${containerClasses}`} style={panelStyle}>
+        <ResizeHandle />
         <div className="h-14 flex items-center justify-between px-6 border-b-[2.5px] border-[#EDEAE4]">
           <h3 className="font-display font-bold text-[#1A1A1A]">Extracted Text</h3>
         </div>
@@ -138,7 +207,8 @@ export function TextResultPanel({ result, isLoading, error }: TextResultPanelPro
   // Loading state
   if (isLoading) {
     return (
-      <div className="w-[480px] bg-white border-l-[2.5px] border-[#2C2C2C] flex flex-col shrink-0">
+      <div className={`${defaultWidth} ${containerClasses}`} style={panelStyle}>
+        <ResizeHandle />
         <div className="h-14 flex items-center justify-between px-6 border-b-[2.5px] border-[#EDEAE4]">
           <h3 className="font-display font-bold text-[#1A1A1A]">Extracted Text</h3>
         </div>
@@ -160,7 +230,8 @@ export function TextResultPanel({ result, isLoading, error }: TextResultPanelPro
   }
 
   return (
-    <div className="w-[480px] bg-white border-l-[2.5px] border-[#2C2C2C] flex flex-col shrink-0 overflow-hidden">
+    <div className={`${defaultWidth} ${containerClasses} overflow-hidden`} style={panelStyle}>
+      <ResizeHandle />
       {/* Header */}
       <div className="h-14 flex items-center justify-between px-6 border-b-[2.5px] border-[#EDEAE4] shrink-0">
         <h3 className="font-display font-bold text-[#1A1A1A]">Extracted Text</h3>
@@ -186,17 +257,29 @@ export function TextResultPanel({ result, isLoading, error }: TextResultPanelPro
           {/* Tab switcher */}
           <div className="flex rounded-xl bg-[#F5F2ED] p-1 neo-border">
             <button
-              className={`px-4 py-1.5 text-sm font-display font-semibold rounded-lg transition-all cursor-pointer ${
+              className={`px-3 py-1.5 text-sm font-display font-semibold rounded-lg transition-all cursor-pointer ${
                 activeTab === "text"
                   ? "bg-white text-[#1A1A1A] neo-shadow-sm"
                   : "text-[#6B6B6B] hover:text-[#1A1A1A]"
               }`}
               onClick={() => setActiveTab("text")}
             >
-              Text
+              {hasMarkdown ? "Data" : "Text"}
             </button>
+            {hasMarkdown && (
+              <button
+                className={`px-3 py-1.5 text-sm font-display font-semibold rounded-lg transition-all cursor-pointer ${
+                  activeTab === "markdown"
+                    ? "bg-white text-[#1A1A1A] neo-shadow-sm"
+                    : "text-[#6B6B6B] hover:text-[#1A1A1A]"
+                }`}
+                onClick={() => setActiveTab("markdown")}
+              >
+                Markdown
+              </button>
+            )}
             <button
-              className={`px-4 py-1.5 text-sm font-display font-semibold rounded-lg transition-all cursor-pointer ${
+              className={`px-3 py-1.5 text-sm font-display font-semibold rounded-lg transition-all cursor-pointer ${
                 activeTab === "json"
                   ? "bg-white text-[#1A1A1A] neo-shadow-sm"
                   : "text-[#6B6B6B] hover:text-[#1A1A1A]"
@@ -216,8 +299,18 @@ export function TextResultPanel({ result, isLoading, error }: TextResultPanelPro
             <CheckmarkIcon className="h-3 w-3 text-white" />
           </div>
           <span className="text-sm font-display font-semibold text-[#1A1A1A]">
-            {result!.statistics.page_count} pages, {result!.statistics.word_count.toLocaleString()} words
-            {result!.statistics.image_count > 0 && `, ${result!.statistics.image_count} images`}
+            {(() => {
+              const stats = getStats();
+              if (stats.isCSV) {
+                return `${stats.rowCount.toLocaleString()} rows, ${stats.columnCount} columns`;
+              }
+              return (
+                <>
+                  {stats.pageCount} pages, {stats.wordCount.toLocaleString()} words
+                  {stats.imageCount > 0 && `, ${stats.imageCount} images`}
+                </>
+              );
+            })()}
           </span>
         </div>
       </div>
@@ -234,11 +327,20 @@ export function TextResultPanel({ result, isLoading, error }: TextResultPanelPro
       {/* Content */}
       <div className="flex-1 overflow-auto min-h-0 p-6 scrollbar-thin">
         {activeTab === "text" ? (
-          <TextContent
-            pages={result!.pages}
-            copiedPage={copiedPage}
-            onCopyPage={handleCopyPage}
-          />
+          isCSVResponse(result!) ? (
+            <CSVContent
+              tables={result!.tables}
+              summary={result!.summary}
+            />
+          ) : (
+            <TextContent
+              pages={(result as DocumentExtractionResponse).pages}
+              copiedPage={copiedPage}
+              onCopyPage={handleCopyPage}
+            />
+          )
+        ) : activeTab === "markdown" && hasMarkdown ? (
+          <MarkdownContent markdown={getMarkdownContent()!} />
         ) : (
           <JsonContent result={result!} />
         )}
@@ -262,7 +364,7 @@ function TextContent({
   copiedPage,
   onCopyPage
 }: {
-  pages: PDFExtractionResponse["pages"];
+  pages: DocumentExtractionResponse["pages"];
   copiedPage: number | null;
   onCopyPage: (pageNum: number, text: string) => void;
 }) {
@@ -339,6 +441,184 @@ function TextContent({
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+function TableIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+      <line x1="3" y1="9" x2="21" y2="9" />
+      <line x1="3" y1="15" x2="21" y2="15" />
+      <line x1="9" y1="3" x2="9" y2="21" />
+      <line x1="15" y1="3" x2="15" y2="21" />
+    </svg>
+  );
+}
+
+function CSVContent({
+  tables,
+  summary
+}: {
+  tables: CSVExtractionResponse["tables"];
+  summary: CSVExtractionResponse["summary"];
+}) {
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  const toggleRow = (tableIdx: number, rowIdx: number) => {
+    const key = `${tableIdx}-${rowIdx}`;
+    const newExpanded = new Set(expandedRows);
+    if (newExpanded.has(key)) {
+      newExpanded.delete(key);
+    } else {
+      newExpanded.add(key);
+    }
+    setExpandedRows(newExpanded);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Schema info */}
+      <div className="p-4 bg-[#F5F2ED] rounded-xl neo-border">
+        <div className="flex items-center gap-2 mb-3">
+          <TableIcon className="w-4 h-4 text-[#4A6B5A]" />
+          <span className="text-sm font-display font-bold text-[#1A1A1A]">Schema</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {summary.columns.map((col, idx) => (
+            <span
+              key={col}
+              className="px-2 py-1 text-xs font-mono bg-white rounded-md neo-border"
+              title={`Type: ${summary.column_types[col]}`}
+            >
+              <span className="text-[#4A6B5A] font-semibold">{col}</span>
+              <span className="text-[#6B6B6B] ml-1">({summary.column_types[col]})</span>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Tables/Pages */}
+      {tables.map((table, tableIdx) => (
+        <div key={tableIdx} className="space-y-3">
+          {tables.length > 1 && (
+            <div className="flex items-center gap-2 sticky top-0 bg-white py-2 border-b border-[#EDEAE4] z-10">
+              <span className="px-2 py-1 text-xs font-display font-bold bg-[#4A6B5A] text-white rounded-md">
+                Page {table.page_index + 1} of {table.total_pages}
+              </span>
+              <span className="text-xs text-[#6B6B6B]">
+                ({table.row_count} rows)
+              </span>
+            </div>
+          )}
+
+          {/* Rows */}
+          <div className="space-y-2">
+            {table.rows.map((row, rowIdx) => {
+              const key = `${tableIdx}-${rowIdx}`;
+              const isExpanded = expandedRows.has(key);
+              const globalRowNum = table.page_index * 500 + rowIdx + 1;
+
+              return (
+                <div
+                  key={rowIdx}
+                  className="rounded-lg neo-border overflow-hidden bg-white"
+                >
+                  <button
+                    onClick={() => toggleRow(tableIdx, rowIdx)}
+                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-[#F5F2ED] transition-colors cursor-pointer text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="px-2 py-0.5 text-xs font-mono bg-[#EDEAE4] rounded text-[#6B6B6B]">
+                        #{globalRowNum}
+                      </span>
+                      <span className="text-sm font-body text-[#2C2C2C] truncate max-w-[280px]">
+                        {Object.values(row).slice(0, 3).filter(v => v !== null).join(" • ")}
+                      </span>
+                    </div>
+                    <svg
+                      className={`w-4 h-4 text-[#6B6B6B] transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <polyline points="6,9 12,15 18,9" />
+                    </svg>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="px-4 py-3 bg-[#F5F2ED] border-t border-[#EDEAE4]">
+                      <div className="grid gap-2">
+                        {Object.entries(row).map(([key, value]) => (
+                          <div key={key} className="flex items-start gap-2">
+                            <span className="text-xs font-mono font-semibold text-[#4A6B5A] min-w-[120px]">
+                              {key}:
+                            </span>
+                            <span className="text-sm font-body text-[#2C2C2C] break-all">
+                              {value === null ? (
+                                <span className="text-[#6B6B6B] italic">null</span>
+                              ) : typeof value === "boolean" ? (
+                                <span className={value ? "text-[#4A6B5A]" : "text-[#B54A4A]"}>
+                                  {String(value)}
+                                </span>
+                              ) : typeof value === "number" ? (
+                                <span className="text-[#6B4A8A]">{value.toLocaleString()}</span>
+                              ) : (
+                                String(value)
+                              )}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MarkdownContent({ markdown }: { markdown: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(markdown);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-display font-semibold text-[#6B6B6B]">
+          Markdown Table Format
+        </span>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1 px-2 py-1 text-xs text-[#6B6B6B] hover:text-[#1A1A1A] transition-colors cursor-pointer rounded-md hover:bg-[#F5F2ED]"
+        >
+          {copied ? (
+            <>
+              <CheckIcon className="w-3 h-3 text-[#4A6B5A]" />
+              <span className="text-[#4A6B5A]">Copied!</span>
+            </>
+          ) : (
+            <>
+              <CopyIcon className="w-3 h-3" />
+              <span>Copy</span>
+            </>
+          )}
+        </button>
+      </div>
+      <pre className="text-xs font-mono text-[#2C2C2C] bg-[#F5F2ED] p-4 rounded-xl neo-border overflow-x-auto whitespace-pre">
+        {markdown}
+      </pre>
     </div>
   );
 }
