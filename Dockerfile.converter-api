@@ -52,7 +52,7 @@ COPY --from=builder /app/.venv /app/.venv
 # Copy application code
 COPY packages/ ./packages/
 COPY apps/ ./apps/
-COPY infra/scripts/ ./scripts/
+COPY infra/alembic/ ./infra/alembic/
 
 # Set ownership
 RUN chown -R appuser:appuser /app
