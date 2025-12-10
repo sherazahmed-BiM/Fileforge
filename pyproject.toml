@@ -124,3 +124,18 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
 ]
+
+
+# ... existing content ...
+
+[tool.uv]
+# Add a specific index for PyTorch CPU versions
+index = [
+    { name = "pytorch-cpu", url = "https://download.pytorch.org/whl/cpu", explicit = true },
+]
+
+[tool.uv.sources]
+# Force torch and related libs to use the CPU index
+torch = [{ index = "pytorch-cpu" }]
+torchvision = [{ index = "pytorch-cpu" }]
+torchaudio = [{ index = "pytorch-cpu" }]

@@ -15,16 +15,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pandoc \
     && rm -rf /var/lib/apt/lists/*
 
-# Use the distroless image tag to copy the binary from /uv
+# Correctly copy uv from the distroless image
 COPY --from=ghcr.io/astral-sh/uv:0.9.17 /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-# Copy dependency files early for caching
+# Compile bytecode for faster startup
+ENV UV_COMPILE_BYTECODE=1
+# Use copy mode to avoid hardlink issues between stages
+ENV UV_LINK_MODE=copy
+
+# Copy dependency files
 COPY pyproject.toml uv.lock* README.md ./
 
-# Install dependencies (without dev)
-RUN uv sync --no-dev
+# Install dependencies
+# Because we updated pyproject.toml to use the CPU index, this will be much smaller/faster
+RUN uv sync --frozen --no-dev
 
 # Copy app code
 COPY packages/ ./packages/
@@ -51,14 +57,13 @@ RUN useradd --create-home --shell /bin/bash appuser
 
 WORKDIR /app
 
-# Copy venv
-COPY --from=builder /app/.venv /app/.venv
+# --- OPTIMIZATION HERE ---
+# Instead of "RUN chown -R ...", we set ownership during the COPY.
+# This prevents the "exporting to docker image" step from hanging.
+COPY --chown=appuser:appuser --from=builder /app/.venv /app/.venv
+COPY --chown=appuser:appuser --from=builder /app/packages /app/packages
+COPY --chown=appuser:appuser --from=builder /app/apps /app/apps
 
-# Copy code
-COPY --from=builder /app/packages /app/packages
-COPY --from=builder /app/apps /app/apps
-
-RUN chown -R appuser:appuser /app
 USER appuser
 
 ENV PATH="/app/.venv/bin:$PATH"
