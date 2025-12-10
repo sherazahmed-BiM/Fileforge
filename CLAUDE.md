@@ -8,8 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Tech Stack**:
 - **Backend**: Python 3.11+ monorepo with FastAPI, Celery workers, SQLAlchemy (async), PostgreSQL, Redis
-- **Document Parsing**: Docling (primary, with OCR+VLM support) with PyMuPDF fallback, tiktoken for token counting
-- **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui, Motion, React Query
+- **Document Parsing**: Docling (primary, with OCR via EasyOCR and VLM support) with PyMuPDF fallback, tiktoken for token counting
+- **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui, Motion (framer-motion), React Query
 
 ## Quick Start
 
@@ -160,3 +160,11 @@ const uploadMutation = useUploadFile();
 
 - Swagger UI: http://localhost:19000/docs
 - OpenAPI JSON: http://localhost:19000/openapi.json
+
+## Environment Variables
+
+Key configuration in `.env` (copy from `.env.example`):
+- `DATABASE_URL`: PostgreSQL connection string (default: `postgresql+asyncpg://fileforge:fileforge@localhost:15433/fileforge`)
+- `REDIS_URL`: Redis connection string (default: `redis://localhost:16380/0`)
+- `MAX_FILE_SIZE`: Maximum upload size in bytes (default: 104857600 / 100MB)
+- `OCR_ENABLED`: Enable OCR for images/scanned docs (default: true)

@@ -27,11 +27,9 @@ SUPPORTED_EXTENSIONS = {
     # Markup
     ".html", ".htm", ".xhtml", ".md", ".markdown", ".adoc", ".asciidoc",
     # Data
-    ".csv", ".vtt", ".xml", ".json",
+    ".csv",
     # Images (OCR supported)
     ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp", ".webp", ".gif",
-    # Audio
-    ".wav", ".mp3",
 }
 
 

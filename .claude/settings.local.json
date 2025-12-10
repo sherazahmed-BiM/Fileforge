@@ -21,7 +21,15 @@
       "Bash(set PYTHONIOENCODING=utf-8:*)",
       "Bash(uv run celery:*)",
       "Bash(npm run dev:*)",
-      "WebFetch(domain:pypi.org)"
+      "WebFetch(domain:pypi.org)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(git push:*)",
+      "Bash(uv lock:*)",
+      "Bash(python3:*)",
+      "Bash(grep:*)",
+      "Bash(uv run ruff check:*)"
     ],
     "deny": [],
     "ask": []

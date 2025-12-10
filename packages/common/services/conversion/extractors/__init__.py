@@ -11,17 +11,6 @@ from packages.common.services.conversion.extractors.base import (
     ExtractionResult,
 )
 from packages.common.services.conversion.extractors.pdf_extractor import PDFExtractor
-from packages.common.services.conversion.extractors.docx_extractor import DOCXExtractor
-from packages.common.services.conversion.extractors.spreadsheet_extractor import (
-    XLSXExtractor,
-    CSVExtractor,
-)
-from packages.common.services.conversion.extractors.text_extractor import (
-    TextExtractor,
-    MarkdownExtractor,
-    HTMLExtractor,
-)
-from packages.common.services.conversion.extractors.image_extractor import ImageExtractor
 
 # Try to import docling extractor (may not be available if docling is not installed)
 try:
@@ -41,13 +30,6 @@ __all__ = [
     "ExtractionResult",
     # Extractors
     "PDFExtractor",
-    "DOCXExtractor",
-    "XLSXExtractor",
-    "CSVExtractor",
-    "TextExtractor",
-    "MarkdownExtractor",
-    "HTMLExtractor",
-    "ImageExtractor",
 ]
 
 # Conditionally add docling extractors to exports

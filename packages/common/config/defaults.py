@@ -52,9 +52,14 @@ class ApplicationDefaults:
     MAX_FILE_SIZE: int = 104857600  # 100MB
     UPLOAD_DIR: str = "/tmp/fileforge/uploads"
     SUPPORTED_EXTENSIONS: list[str] = [
-        ".pdf", ".docx", ".doc", ".xlsx", ".xls", ".pptx", ".ppt",
-        ".txt", ".md", ".html", ".htm", ".csv", ".json", ".xml",
-        ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff",
+        # Documents
+        ".pdf", ".docx", ".xlsx", ".pptx",
+        # Markup
+        ".html", ".htm", ".xhtml", ".md", ".markdown", ".adoc", ".asciidoc",
+        # Data
+        ".csv",
+        # Images (OCR supported)
+        ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp", ".webp", ".gif",
     ]
 
     # ==================== Chunking ====================
