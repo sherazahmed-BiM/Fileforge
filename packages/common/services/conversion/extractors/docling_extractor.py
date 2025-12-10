@@ -728,6 +728,24 @@ class DoclingExtractor(BaseExtractor):
             }
             metadata["xlsx_summary"] = summary
 
+            # Generate markdown tables
+            markdown_parts = []
+            for table in all_tables:
+                if table.rows:
+                    markdown_parts.append(f"## {table.name}\n")
+                    # Header row
+                    headers = list(table.rows[0].keys()) if table.rows else []
+                    if headers:
+                        markdown_parts.append("| " + " | ".join(headers) + " |")
+                        markdown_parts.append("| " + " | ".join(["---"] * len(headers)) + " |")
+                        # Data rows
+                        for row in table.rows:
+                            values = [str(row.get(h, "")) for h in headers]
+                            markdown_parts.append("| " + " | ".join(values) + " |")
+                    markdown_parts.append("")
+            if markdown_parts:
+                metadata["markdown"] = "\n".join(markdown_parts)
+
             # Create text element for raw_text
             text_content = f"Excel Workbook: {len(all_tables)} sheets, {total_rows} total rows"
             elements = [
@@ -1037,6 +1055,14 @@ class DoclingExtractor(BaseExtractor):
             if not ocr_text:
                 warnings.append("No text could be extracted from image. OCR may have failed.")
 
+            # Export markdown
+            try:
+                markdown_text = doc.export_to_markdown()
+                if markdown_text and markdown_text.strip():
+                    metadata["markdown"] = markdown_text
+            except Exception as e:
+                logger.warning(f"Markdown export failed for image: {e}")
+
             # Also include the image itself as base64
             try:
                 with open(file_path, 'rb') as f:
@@ -1232,6 +1258,20 @@ class DoclingExtractor(BaseExtractor):
         }
         metadata["csv_summary"] = summary
 
+        # Generate markdown table
+        markdown_parts = []
+        markdown_parts.append(f"## {file_path.stem}\n")
+        if headers:
+            markdown_parts.append("| " + " | ".join(headers) + " |")
+            markdown_parts.append("| " + " | ".join(["---"] * len(headers)) + " |")
+            # Limit to first 100 rows for markdown preview
+            for row in all_rows[:100]:
+                values = [str(row.get(h, "")) for h in headers]
+                markdown_parts.append("| " + " | ".join(values) + " |")
+            if total_rows > 100:
+                markdown_parts.append(f"\n*... and {total_rows - 100} more rows*")
+        metadata["markdown"] = "\n".join(markdown_parts)
+
         text_content = (
             f"CSV Data: {total_rows} rows, {len(headers)} columns. "
             f"Columns: {', '.join(headers)}"
@@ -1292,6 +1332,14 @@ class DoclingExtractor(BaseExtractor):
                             page_number=1,
                         )
                     )
+
+            # Export markdown
+            try:
+                markdown_text = doc.export_to_markdown()
+                if markdown_text and markdown_text.strip():
+                    metadata["markdown"] = markdown_text
+            except Exception as e:
+                logger.warning(f"Markdown export failed for AsciiDoc: {e}")
 
         except Exception as e:
             logger.error(f"AsciiDoc extraction failed: {e}")
@@ -1426,18 +1474,24 @@ class DoclingExtractor(BaseExtractor):
         return 1
 
     def _get_item_order(self, item, default_order: int) -> int:
-        """Get the order/position of an item within its page."""
+        """Get the order/position of an item within its page.
+
+        In PDF coordinate systems, Y=0 is typically at the bottom and increases upward.
+        So elements at the top of the page have HIGH Y/top values.
+        We negate the value so that sorting ascending gives us top-to-bottom order.
+        """
         try:
             if hasattr(item, 'prov') and item.prov and len(item.prov) > 0:
                 prov = item.prov[0]
                 if hasattr(prov, 'bbox') and prov.bbox:
                     bbox = prov.bbox
+                    # Negate to get top-to-bottom order when sorting ascending
                     if hasattr(bbox, 't'):
-                        return int(bbox.t * 1000)
+                        return -int(bbox.t * 1000)
                     elif hasattr(bbox, 'top'):
-                        return int(bbox.top * 1000)
+                        return -int(bbox.top * 1000)
                     elif hasattr(bbox, 'y'):
-                        return int(bbox.y * 1000)
+                        return -int(bbox.y * 1000)
         except Exception:
             pass
         return default_order
