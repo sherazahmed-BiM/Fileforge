@@ -15,8 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pandoc \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv by copying the binary from the official uv image
-COPY --from=ghcr.io/astral-sh/uv:0.9.17-bookworm-slim /uv /usr/local/bin/uv
+# Use the distroless image tag to copy the binary from /uv
+COPY --from=ghcr.io/astral-sh/uv:0.9.17 /uv /usr/local/bin/uv
 
 WORKDIR /app
 
