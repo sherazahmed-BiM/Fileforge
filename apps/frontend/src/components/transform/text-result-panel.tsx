@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { PDFExtractionResponse, CSVExtractionResponse, DocumentExtractionResponse } from "@/types";
@@ -82,6 +82,40 @@ export function TextResultPanel({ result, isLoading, error, width, onResizeStart
     if (isCSVResponse(result)) return result.markdown || null;
     if (isDocumentResponse(result)) return result.document.metadata?.markdown as string || null;
     return null;
+  };
+
+  // Get file type for specialized rendering
+  const getFileType = (): string => {
+    if (!result) return "unknown";
+    return result.document.file_type?.toLowerCase() || "unknown";
+  };
+
+  // Get file type display name
+  const getFileTypeLabel = (): string => {
+    const fileType = getFileType();
+    const labels: Record<string, string> = {
+      pdf: "PDF Document",
+      docx: "Word Document",
+      xlsx: "Excel Spreadsheet",
+      pptx: "PowerPoint Presentation",
+      html: "HTML Document",
+      htm: "HTML Document",
+      xhtml: "XHTML Document",
+      md: "Markdown",
+      markdown: "Markdown",
+      csv: "CSV Data",
+      png: "Image (PNG)",
+      jpg: "Image (JPEG)",
+      jpeg: "Image (JPEG)",
+      tiff: "Image (TIFF)",
+      tif: "Image (TIFF)",
+      bmp: "Image (BMP)",
+      webp: "Image (WebP)",
+      gif: "Image (GIF)",
+      adoc: "AsciiDoc",
+      asciidoc: "AsciiDoc",
+    };
+    return labels[fileType] || fileType.toUpperCase();
   };
 
   // Dynamic width style
@@ -296,22 +330,27 @@ export function TextResultPanel({ result, isLoading, error, width, onResizeStart
 
       {/* Info banner */}
       <div className="flex items-center justify-between px-6 py-3 bg-gradient-to-r from-[#4A6B5A]/10 to-[#6B9B8A]/10 border-b-[2.5px] border-[#4A6B5A]/20 shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-md bg-[#4A6B5A] flex items-center justify-center">
-            <CheckmarkIcon className="h-3 w-3 text-white" />
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded-md bg-[#4A6B5A] flex items-center justify-center">
+              <CheckmarkIcon className="h-3 w-3 text-white" />
+            </div>
+            <span className="text-sm font-display font-semibold text-[#1A1A1A]">
+              {getFileTypeLabel()}
+            </span>
           </div>
-          <span className="text-sm font-display font-semibold text-[#1A1A1A]">
+          <span className="text-xs text-[#6B6B6B]">•</span>
+          <span className="text-sm font-body text-[#6B6B6B]">
             {(() => {
               const stats = getStats();
               if (stats.isCSV) {
                 return `${stats.rowCount.toLocaleString()} rows, ${stats.columnCount} columns`;
               }
-              return (
-                <>
-                  {stats.pageCount} pages, {stats.wordCount.toLocaleString()} words
-                  {stats.imageCount > 0 && `, ${stats.imageCount} images`}
-                </>
-              );
+              const parts = [];
+              if (stats.pageCount > 0) parts.push(`${stats.pageCount} page${stats.pageCount > 1 ? 's' : ''}`);
+              if (stats.wordCount > 0) parts.push(`${stats.wordCount.toLocaleString()} words`);
+              if (stats.imageCount > 0) parts.push(`${stats.imageCount} image${stats.imageCount > 1 ? 's' : ''}`);
+              return parts.join(', ') || 'Extracted';
             })()}
           </span>
         </div>
@@ -337,10 +376,11 @@ export function TextResultPanel({ result, isLoading, error, width, onResizeStart
           ) : (
             <PreviewContent
               result={result as DocumentExtractionResponse}
+              fileType={getFileType()}
             />
           )
         ) : activeTab === "markdown" && hasMarkdown ? (
-          <MarkdownContent markdown={getMarkdownContent()!} />
+          <MarkdownContent markdown={getMarkdownContent()!} fileType={getFileType()} />
         ) : (
           <JsonContent result={result!} />
         )}
@@ -361,9 +401,20 @@ function ImageIcon({ className }: { className?: string }) {
 
 function PreviewContent({
   result,
+  fileType,
 }: {
   result: DocumentExtractionResponse;
+  fileType: string;
 }) {
+  // Check if this is an image file type
+  const isImageFile = ["png", "jpg", "jpeg", "tiff", "tif", "bmp", "webp", "gif"].includes(fileType);
+
+  // Check if this is a markdown file
+  const isMarkdownFile = ["md", "markdown"].includes(fileType);
+
+  // Check if this is a single-page document type (DOCX, HTML, AsciiDoc)
+  const isSinglePageDoc = ["docx", "html", "htm", "xhtml", "adoc", "asciidoc"].includes(fileType);
+
   // Deduplicate images by data hash
   const getUniqueImages = (images: DocumentExtractionResponse["pages"][0]["images"]) => {
     if (!images) return [];
@@ -387,6 +438,186 @@ function PreviewContent({
     });
   };
 
+  // For image files, show original image prominently first
+  if (isImageFile) {
+    const allImages = result.pages.flatMap(p => sortImagesByPosition(p.images));
+    const allText = result.pages.map(p => p.text).filter(Boolean).join("\n\n");
+
+    return (
+      <div className="space-y-6">
+        {/* Original Image */}
+        {allImages.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-[#C4705A]" />
+              <span className="text-sm font-display font-semibold text-[#1A1A1A]">
+                Original Image
+              </span>
+            </div>
+            <div className="flex flex-col gap-3">
+              {allImages.map((image, idx) => (
+                <div key={idx} className="inline-block rounded-lg neo-border overflow-hidden bg-[#F5F2ED] w-fit max-w-full">
+                  <img
+                    src={image.data}
+                    alt={image.description || `Image ${idx + 1}`}
+                    className="h-auto max-w-full"
+                    style={{ maxWidth: '100%' }}
+                    loading="lazy"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* OCR Extracted Text */}
+        {allText && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-1 text-xs font-display font-bold bg-[#4A6B5A] text-white rounded-md">
+                OCR Text
+              </span>
+            </div>
+            <div className="p-4 bg-[#F5F2ED] rounded-xl neo-border">
+              <p className="text-sm font-body text-[#2C2C2C] leading-relaxed whitespace-pre-wrap">
+                {allText}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {!allImages.length && !allText && (
+          <div className="text-sm font-body text-[#6B6B6B] italic">
+            No content could be extracted from this image
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // For markdown files, render the markdown directly from metadata
+  if (isMarkdownFile && result.document.metadata?.markdown) {
+    return (
+      <div className="prose prose-sm max-w-none">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={markdownComponents}
+        >
+          {result.document.metadata.markdown as string}
+        </ReactMarkdown>
+      </div>
+    );
+  }
+
+  // For single-page documents (DOCX, HTML, AsciiDoc), render without page header
+  if (isSinglePageDoc) {
+    const allImages = result.pages.flatMap(p => sortImagesByPosition(p.images));
+    const allText = result.pages.map(p => p.text).filter(Boolean).join("\n\n");
+    const markdown = result.document.metadata?.markdown as string | undefined;
+
+    // If we have markdown, render it for better formatting
+    if (markdown) {
+      return (
+        <div className="space-y-6">
+          {/* Images first */}
+          {allImages.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-[#C4705A]" />
+                <span className="text-xs font-display font-semibold text-[#6B6B6B]">
+                  {allImages.length} image{allImages.length > 1 ? "s" : ""} extracted
+                </span>
+              </div>
+              <div className="flex flex-col gap-3">
+                {allImages.map((image, idx) => (
+                  <div key={idx} className="inline-block rounded-lg neo-border overflow-hidden bg-[#F5F2ED] w-fit max-w-full">
+                    <img
+                      src={image.data}
+                      alt={image.description || `Image ${idx + 1}`}
+                      className="h-auto max-w-full"
+                      style={{
+                        width: image.metadata?.extracted_width
+                          ? `${Math.min(image.metadata.extracted_width, 400)}px`
+                          : 'auto'
+                      }}
+                      loading="lazy"
+                    />
+                    {image.description && (
+                      <div className="px-3 py-2 text-xs text-[#6B6B6B] border-t border-[#EDEAE4]">
+                        <span className="font-display font-semibold">{image.description}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Document content */}
+          <div className="prose prose-sm max-w-none">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={markdownComponents}
+            >
+              {markdown}
+            </ReactMarkdown>
+          </div>
+        </div>
+      );
+    }
+
+    // Fallback: render plain text
+    return (
+      <div className="space-y-6">
+        {/* Images first */}
+        {allImages.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-[#C4705A]" />
+              <span className="text-xs font-display font-semibold text-[#6B6B6B]">
+                {allImages.length} image{allImages.length > 1 ? "s" : ""} extracted
+              </span>
+            </div>
+            <div className="flex flex-col gap-3">
+              {allImages.map((image, idx) => (
+                <div key={idx} className="inline-block rounded-lg neo-border overflow-hidden bg-[#F5F2ED] w-fit max-w-full">
+                  <img
+                    src={image.data}
+                    alt={image.description || `Image ${idx + 1}`}
+                    className="h-auto max-w-full"
+                    style={{
+                      width: image.metadata?.extracted_width
+                        ? `${Math.min(image.metadata.extracted_width, 400)}px`
+                        : 'auto'
+                    }}
+                    loading="lazy"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Text content */}
+        {allText ? (
+          <div className="prose prose-sm max-w-none">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={markdownComponents}
+            >
+              {allText}
+            </ReactMarkdown>
+          </div>
+        ) : (
+          <div className="text-sm font-body text-[#6B6B6B] italic">
+            No text content extracted
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Standard page-by-page rendering for documents (PDF, PPTX)
   return (
     <div className="space-y-6">
       {result.pages.map((page) => {
@@ -397,7 +628,7 @@ function PreviewContent({
             {/* Page header */}
             <div className="flex items-center gap-2 sticky top-0 bg-white py-2 border-b border-[#EDEAE4] z-10">
               <span className="px-2 py-1 text-xs font-display font-bold bg-[#4A6B5A] text-white rounded-md">
-                Page {page.page_number}
+                {fileType === "pptx" ? `Slide ${page.page_number}` : `Page ${page.page_number}`}
               </span>
               {sortedImages.length > 0 && (
                 <span className="flex items-center gap-1 px-2 py-1 text-xs font-display font-semibold bg-[#C4705A] text-white rounded-md">
@@ -440,115 +671,14 @@ function PreviewContent({
               <div className="prose prose-sm max-w-none">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
-                  components={{
-                    h1: ({ children }) => (
-                      <h1 className="text-xl font-display font-bold text-[#1A1A1A] mt-4 mb-2 first:mt-0">
-                        {children}
-                      </h1>
-                    ),
-                    h2: ({ children }) => (
-                      <h2 className="text-lg font-display font-bold text-[#1A1A1A] mt-3 mb-2">
-                        {children}
-                      </h2>
-                    ),
-                    h3: ({ children }) => (
-                      <h3 className="text-base font-display font-semibold text-[#1A1A1A] mt-3 mb-1">
-                        {children}
-                      </h3>
-                    ),
-                    p: ({ children }) => (
-                      <p className="text-sm font-body text-[#2C2C2C] leading-relaxed mb-2">
-                        {children}
-                      </p>
-                    ),
-                    ul: ({ children }) => (
-                      <ul className="list-disc list-inside text-sm font-body text-[#2C2C2C] mb-2 space-y-1">
-                        {children}
-                      </ul>
-                    ),
-                    ol: ({ children }) => (
-                      <ol className="list-decimal list-inside text-sm font-body text-[#2C2C2C] mb-2 space-y-1">
-                        {children}
-                      </ol>
-                    ),
-                    li: ({ children }) => (
-                      <li className="text-sm font-body text-[#2C2C2C]">{children}</li>
-                    ),
-                    code: ({ className, children }) => {
-                      const isInline = !className;
-                      if (isInline) {
-                        return (
-                          <code className="px-1.5 py-0.5 text-xs font-mono bg-[#F5F2ED] text-[#C4705A] rounded">
-                            {children}
-                          </code>
-                        );
-                      }
-                      return (
-                        <code className="block p-3 text-xs font-mono bg-[#F5F2ED] text-[#2C2C2C] rounded-lg overflow-x-auto">
-                          {children}
-                        </code>
-                      );
-                    },
-                    pre: ({ children }) => (
-                      <pre className="bg-[#F5F2ED] rounded-lg neo-border mb-2 overflow-hidden">
-                        {children}
-                      </pre>
-                    ),
-                    table: ({ children }) => (
-                      <div className="overflow-x-auto mb-3 neo-border rounded-lg">
-                        <table className="min-w-full text-sm">{children}</table>
-                      </div>
-                    ),
-                    thead: ({ children }) => (
-                      <thead className="bg-[#4A6B5A] text-white">{children}</thead>
-                    ),
-                    th: ({ children }) => (
-                      <th className="px-3 py-2 text-left text-xs font-display font-semibold">
-                        {children}
-                      </th>
-                    ),
-                    tbody: ({ children }) => (
-                      <tbody className="divide-y divide-[#EDEAE4]">{children}</tbody>
-                    ),
-                    tr: ({ children }) => (
-                      <tr className="hover:bg-[#F5F2ED] transition-colors">{children}</tr>
-                    ),
-                    td: ({ children }) => (
-                      <td className="px-3 py-2 text-xs font-body text-[#2C2C2C]">
-                        {children}
-                      </td>
-                    ),
-                    blockquote: ({ children }) => (
-                      <blockquote className="border-l-4 border-[#4A6B5A] pl-4 my-2 text-sm italic text-[#6B6B6B]">
-                        {children}
-                      </blockquote>
-                    ),
-                    a: ({ href, children }) => (
-                      <a
-                        href={href}
-                        className="text-[#4A6B5A] hover:text-[#3A5B4A] underline"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {children}
-                      </a>
-                    ),
-                    img: () => null, // Skip images in markdown - shown separately above
-                    hr: () => <hr className="my-3 border-[#EDEAE4]" />,
-                    strong: ({ children }) => (
-                      <strong className="font-semibold text-[#1A1A1A]">{children}</strong>
-                    ),
-                    em: ({ children }) => (
-                      <em className="italic text-[#2C2C2C]">{children}</em>
-                    ),
-                  }}
+                  components={markdownComponents}
                 >
                   {page.text}
                 </ReactMarkdown>
               </div>
             ) : (
               <div className="text-sm font-body text-[#6B6B6B] italic">
-                No text on this page
+                {fileType === "pptx" ? "No text on this slide" : "No text on this page"}
               </div>
             )}
           </div>
@@ -557,6 +687,110 @@ function PreviewContent({
     </div>
   );
 }
+
+// Shared markdown components for consistent rendering
+const markdownComponents = {
+  h1: ({ children }: { children?: React.ReactNode }) => (
+    <h1 className="text-xl font-display font-bold text-[#1A1A1A] mt-4 mb-2 first:mt-0">
+      {children}
+    </h1>
+  ),
+  h2: ({ children }: { children?: React.ReactNode }) => (
+    <h2 className="text-lg font-display font-bold text-[#1A1A1A] mt-3 mb-2">
+      {children}
+    </h2>
+  ),
+  h3: ({ children }: { children?: React.ReactNode }) => (
+    <h3 className="text-base font-display font-semibold text-[#1A1A1A] mt-3 mb-1">
+      {children}
+    </h3>
+  ),
+  p: ({ children }: { children?: React.ReactNode }) => (
+    <p className="text-sm font-body text-[#2C2C2C] leading-relaxed mb-2">
+      {children}
+    </p>
+  ),
+  ul: ({ children }: { children?: React.ReactNode }) => (
+    <ul className="list-disc list-inside text-sm font-body text-[#2C2C2C] mb-2 space-y-1">
+      {children}
+    </ul>
+  ),
+  ol: ({ children }: { children?: React.ReactNode }) => (
+    <ol className="list-decimal list-inside text-sm font-body text-[#2C2C2C] mb-2 space-y-1">
+      {children}
+    </ol>
+  ),
+  li: ({ children }: { children?: React.ReactNode }) => (
+    <li className="text-sm font-body text-[#2C2C2C]">{children}</li>
+  ),
+  code: ({ className, children }: { className?: string; children?: React.ReactNode }) => {
+    const isInline = !className;
+    if (isInline) {
+      return (
+        <code className="px-1.5 py-0.5 text-xs font-mono bg-[#F5F2ED] text-[#C4705A] rounded">
+          {children}
+        </code>
+      );
+    }
+    return (
+      <code className="block p-3 text-xs font-mono bg-[#F5F2ED] text-[#2C2C2C] rounded-lg overflow-x-auto">
+        {children}
+      </code>
+    );
+  },
+  pre: ({ children }: { children?: React.ReactNode }) => (
+    <pre className="bg-[#F5F2ED] rounded-lg neo-border mb-2 overflow-hidden">
+      {children}
+    </pre>
+  ),
+  table: ({ children }: { children?: React.ReactNode }) => (
+    <div className="overflow-x-auto mb-3 neo-border rounded-lg">
+      <table className="min-w-full text-sm">{children}</table>
+    </div>
+  ),
+  thead: ({ children }: { children?: React.ReactNode }) => (
+    <thead className="bg-[#4A6B5A] text-white">{children}</thead>
+  ),
+  th: ({ children }: { children?: React.ReactNode }) => (
+    <th className="px-3 py-2 text-left text-xs font-display font-semibold">
+      {children}
+    </th>
+  ),
+  tbody: ({ children }: { children?: React.ReactNode }) => (
+    <tbody className="divide-y divide-[#EDEAE4]">{children}</tbody>
+  ),
+  tr: ({ children }: { children?: React.ReactNode }) => (
+    <tr className="hover:bg-[#F5F2ED] transition-colors">{children}</tr>
+  ),
+  td: ({ children }: { children?: React.ReactNode }) => (
+    <td className="px-3 py-2 text-xs font-body text-[#2C2C2C]">
+      {children}
+    </td>
+  ),
+  blockquote: ({ children }: { children?: React.ReactNode }) => (
+    <blockquote className="border-l-4 border-[#4A6B5A] pl-4 my-2 text-sm italic text-[#6B6B6B]">
+      {children}
+    </blockquote>
+  ),
+  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
+    <a
+      href={href}
+      className="text-[#4A6B5A] hover:text-[#3A5B4A] underline"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {children}
+    </a>
+  ),
+  img: () => null, // Skip images in markdown - shown separately
+  hr: () => <hr className="my-3 border-[#EDEAE4]" />,
+  strong: ({ children }: { children?: React.ReactNode }) => (
+    <strong className="font-semibold text-[#1A1A1A]">{children}</strong>
+  ),
+  em: ({ children }: { children?: React.ReactNode }) => (
+    <em className="italic text-[#2C2C2C]">{children}</em>
+  ),
+};
 
 function TextContent({
   pages,
@@ -783,7 +1017,7 @@ function CSVContent({
   );
 }
 
-function MarkdownContent({ markdown }: { markdown: string }) {
+function MarkdownContent({ markdown, fileType }: { markdown: string; fileType: string }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -792,11 +1026,18 @@ function MarkdownContent({ markdown }: { markdown: string }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Get label based on file type
+  const getLabel = () => {
+    if (["csv", "xlsx"].includes(fileType)) return "Markdown Table Format";
+    if (["md", "markdown"].includes(fileType)) return "Raw Markdown";
+    return "Markdown Export";
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-xs font-display font-semibold text-[#6B6B6B]">
-          Markdown Table Format
+          {getLabel()}
         </span>
         <button
           onClick={handleCopy}

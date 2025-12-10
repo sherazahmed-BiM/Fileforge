@@ -547,11 +547,16 @@ class DoclingExtractor(BaseExtractor):
 
             metadata.update(self._extract_metadata(result))
 
-            # Extract structured content
+            # Track seen image data to avoid duplicates
+            seen_image_hashes: set[str] = set()
             page_num = 1
             current_section = ""
+            order_counter = 0
 
             for item, level in doc.iterate_items():
+                item_order = self._get_item_order(item, order_counter)
+                order_counter += 1
+
                 # Handle headings
                 if hasattr(item, 'label') and item.label:
                     label = str(item.label).lower()
@@ -568,13 +573,30 @@ class DoclingExtractor(BaseExtractor):
                             )
                             continue
 
+                # Handle tables
+                if hasattr(item, 'label') and item.label and 'table' in str(item.label).lower():
+                    if hasattr(item, 'text') and item.text:
+                        elements.append(
+                            ExtractedElement(
+                                element_type=ElementType.TEXT,
+                                content=item.text,
+                                page_number=page_num,
+                                metadata={"type": "table", "section": current_section},
+                            )
+                        )
+                        continue
+
                 # Handle images
                 if self._is_picture_item(item):
                     if extract_images:
                         img_element = self._extract_picture_item(item, len(elements), doc)
-                        if img_element:
-                            img_element.metadata["section"] = current_section
-                            elements.append(img_element)
+                        if img_element and img_element.image_data:
+                            img_hash = img_element.image_data[:200]
+                            if img_hash not in seen_image_hashes:
+                                seen_image_hashes.add(img_hash)
+                                img_element.metadata["section"] = current_section
+                                img_element.metadata["position"] = item_order
+                                elements.append(img_element)
 
                 # Handle text
                 elif hasattr(item, 'text') and item.text:
@@ -589,13 +611,30 @@ class DoclingExtractor(BaseExtractor):
                             )
                         )
 
-            # Export markdown
+            # Also extract from doc.pictures as fallback
+            if extract_images and hasattr(doc, 'pictures'):
+                for idx, picture in enumerate(doc.pictures):
+                    img_element = self._extract_picture(picture, idx, doc)
+                    if img_element and img_element.image_data:
+                        img_hash = img_element.image_data[:200]
+                        if img_hash not in seen_image_hashes:
+                            seen_image_hashes.add(img_hash)
+                            img_element.metadata["position"] = 1000 + idx
+                            elements.append(img_element)
+
+            # Export markdown with images
             try:
-                markdown_text = doc.export_to_markdown()
+                markdown_text = self._export_markdown_with_images(doc)
                 if markdown_text:
                     metadata["markdown"] = markdown_text
             except Exception as e:
                 logger.warning(f"Markdown export failed: {e}")
+                try:
+                    markdown_text = doc.export_to_markdown()
+                    if markdown_text:
+                        metadata["markdown"] = markdown_text
+                except Exception:
+                    pass
 
             total_images = sum(1 for el in elements if el.element_type == ElementType.IMAGE)
             metadata["total_images"] = total_images
@@ -788,12 +827,16 @@ class DoclingExtractor(BaseExtractor):
 
             metadata.update(self._extract_metadata(result))
 
-            # Track slides
+            # Track seen image data to avoid duplicates
+            seen_image_hashes: set[str] = set()
             slide_num = 1
             current_slide_content: list[str] = []
+            order_counter = 0
 
             for item, level in doc.iterate_items():
                 item_page = self._get_item_page(item)
+                item_order = self._get_item_order(item, order_counter)
+                order_counter += 1
 
                 # New slide
                 if item_page != slide_num:
@@ -809,14 +852,24 @@ class DoclingExtractor(BaseExtractor):
                     current_slide_content = []
                     slide_num = item_page
 
+                # Handle tables
+                if hasattr(item, 'label') and item.label and 'table' in str(item.label).lower():
+                    if hasattr(item, 'text') and item.text:
+                        current_slide_content.append(item.text)
+                        continue
+
                 # Handle images
                 if self._is_picture_item(item):
                     if extract_images:
                         img_element = self._extract_picture_item(item, len(elements), doc)
-                        if img_element:
-                            img_element.page_number = slide_num
-                            img_element.metadata["slide"] = slide_num
-                            elements.append(img_element)
+                        if img_element and img_element.image_data:
+                            img_hash = img_element.image_data[:200]
+                            if img_hash not in seen_image_hashes:
+                                seen_image_hashes.add(img_hash)
+                                img_element.page_number = slide_num
+                                img_element.metadata["slide"] = slide_num
+                                img_element.metadata["position"] = item_order
+                                elements.append(img_element)
 
                 # Handle text
                 elif hasattr(item, 'text') and item.text:
@@ -835,17 +888,37 @@ class DoclingExtractor(BaseExtractor):
                     )
                 )
 
+            # Also extract from doc.pictures as fallback
+            if extract_images and hasattr(doc, 'pictures'):
+                for idx, picture in enumerate(doc.pictures):
+                    picture_page = self._get_item_page(picture)
+                    img_element = self._extract_picture(picture, idx, doc)
+                    if img_element and img_element.image_data:
+                        img_hash = img_element.image_data[:200]
+                        if img_hash not in seen_image_hashes:
+                            seen_image_hashes.add(img_hash)
+                            img_element.page_number = picture_page
+                            img_element.metadata["slide"] = picture_page
+                            img_element.metadata["position"] = 1000 + idx
+                            elements.append(img_element)
+
             metadata["slide_count"] = slide_num
             total_images = sum(1 for el in elements if el.element_type == ElementType.IMAGE)
             metadata["total_images"] = total_images
 
-            # Export markdown
+            # Export markdown with images
             try:
-                markdown_text = doc.export_to_markdown()
+                markdown_text = self._export_markdown_with_images(doc)
                 if markdown_text:
                     metadata["markdown"] = markdown_text
             except Exception as e:
                 logger.warning(f"Markdown export failed: {e}")
+                try:
+                    markdown_text = doc.export_to_markdown()
+                    if markdown_text:
+                        metadata["markdown"] = markdown_text
+                except Exception:
+                    pass
 
         except Exception as e:
             logger.error(f"PPTX extraction failed: {e}")
@@ -883,18 +956,42 @@ class DoclingExtractor(BaseExtractor):
 
             metadata.update(self._extract_metadata(result))
 
+            # Track seen image data to avoid duplicates
+            seen_image_hashes: set[str] = set()
+            order_counter = 0
+
             # Extract content
             for item, level in doc.iterate_items():
+                item_order = self._get_item_order(item, order_counter)
+                order_counter += 1
+
+                # Handle tables
+                if hasattr(item, 'label') and item.label and 'table' in str(item.label).lower():
+                    if hasattr(item, 'text') and item.text:
+                        elements.append(
+                            ExtractedElement(
+                                element_type=ElementType.TEXT,
+                                content=item.text,
+                                page_number=1,
+                                metadata={"type": "table", "html_tag": "table"},
+                            )
+                        )
+                        continue
+
                 if self._is_picture_item(item):
                     if extract_images:
                         img_element = self._extract_picture_item(item, len(elements), doc)
-                        if img_element:
-                            elements.append(img_element)
+                        if img_element and img_element.image_data:
+                            img_hash = img_element.image_data[:200]
+                            if img_hash not in seen_image_hashes:
+                                seen_image_hashes.add(img_hash)
+                                img_element.metadata["position"] = item_order
+                                elements.append(img_element)
 
                 elif hasattr(item, 'text') and item.text:
                     text = item.text.strip()
                     if text:
-                        el_metadata = {}
+                        el_metadata: dict[str, Any] = {}
                         if hasattr(item, 'label') and item.label:
                             el_metadata["html_tag"] = str(item.label)
                         elements.append(
@@ -906,13 +1003,30 @@ class DoclingExtractor(BaseExtractor):
                             )
                         )
 
-            # Export markdown
+            # Also extract from doc.pictures as fallback
+            if extract_images and hasattr(doc, 'pictures'):
+                for idx, picture in enumerate(doc.pictures):
+                    img_element = self._extract_picture(picture, idx, doc)
+                    if img_element and img_element.image_data:
+                        img_hash = img_element.image_data[:200]
+                        if img_hash not in seen_image_hashes:
+                            seen_image_hashes.add(img_hash)
+                            img_element.metadata["position"] = 1000 + idx
+                            elements.append(img_element)
+
+            # Export markdown with images
             try:
-                markdown_text = doc.export_to_markdown()
+                markdown_text = self._export_markdown_with_images(doc)
                 if markdown_text:
                     metadata["markdown"] = markdown_text
             except Exception as e:
                 logger.warning(f"Markdown export failed: {e}")
+                try:
+                    markdown_text = doc.export_to_markdown()
+                    if markdown_text:
+                        metadata["markdown"] = markdown_text
+                except Exception:
+                    pass
 
             total_images = sum(1 for el in elements if el.element_type == ElementType.IMAGE)
             metadata["total_images"] = total_images
