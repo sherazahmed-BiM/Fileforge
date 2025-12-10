@@ -419,6 +419,8 @@ class DoclingExtractor(BaseExtractor):
             # Process all document items
             page_elements: dict[int, list[tuple[int, ExtractedElement]]] = {}
             order_counter = 0
+            # Track seen image data to avoid duplicates (use first 200 chars as hash)
+            seen_image_hashes: set[str] = set()
 
             for item, level in doc.iterate_items():
                 item_page = self._get_item_page(item)
@@ -431,8 +433,14 @@ class DoclingExtractor(BaseExtractor):
                 if self._is_picture_item(item):
                     if extract_images and self.generate_images:
                         img_element = self._extract_picture_item(item, order_counter, doc)
-                        if img_element:
-                            page_elements[item_page].append((item_order, img_element))
+                        if img_element and img_element.image_data:
+                            # Deduplicate based on image data hash
+                            img_hash = img_element.image_data[:200]
+                            if img_hash not in seen_image_hashes:
+                                seen_image_hashes.add(img_hash)
+                                # Add position to metadata for frontend ordering
+                                img_element.metadata["position"] = item_order
+                                page_elements[item_page].append((item_order, img_element))
                 elif hasattr(item, 'text') and item.text:
                     text_el = ExtractedElement(
                         element_type=ElementType.TEXT,
@@ -441,7 +449,8 @@ class DoclingExtractor(BaseExtractor):
                     )
                     page_elements[item_page].append((item_order, text_el))
 
-            # Process pictures separately
+            # Process pictures from doc.pictures only if we haven't found any images yet
+            # This is a fallback for documents where iterate_items doesn't yield pictures
             if extract_images and self.generate_images and hasattr(doc, 'pictures'):
                 for idx, picture in enumerate(doc.pictures):
                     picture_page = self._get_item_page(picture)
@@ -450,14 +459,14 @@ class DoclingExtractor(BaseExtractor):
                     if picture_page not in page_elements:
                         page_elements[picture_page] = []
 
-                    existing_images = [
-                        el for _, el in page_elements[picture_page]
-                        if el.element_type == ElementType.IMAGE
-                    ]
-
-                    if len(existing_images) <= idx:
-                        img_element = self._extract_picture(picture, idx, doc)
-                        if img_element:
+                    img_element = self._extract_picture(picture, idx, doc)
+                    if img_element and img_element.image_data:
+                        # Deduplicate based on image data hash
+                        img_hash = img_element.image_data[:200]
+                        if img_hash not in seen_image_hashes:
+                            seen_image_hashes.add(img_hash)
+                            # Add position to metadata for frontend ordering
+                            img_element.metadata["position"] = picture_order
                             page_elements[picture_page].append((picture_order, img_element))
 
             # Export markdown with embedded images

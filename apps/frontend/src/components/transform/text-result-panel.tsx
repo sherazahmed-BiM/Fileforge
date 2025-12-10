@@ -364,17 +364,23 @@ function PreviewContent({
 }: {
   result: DocumentExtractionResponse;
 }) {
-  // Deduplicate images per page based on image data hash
+  // Deduplicate and sort images by position in original document
   const getUniqueImages = (images: DocumentExtractionResponse["pages"][0]["images"]) => {
     if (!images) return [];
     const seen = new Set<string>();
-    return images.filter((img) => {
+    const uniqueImages = images.filter((img) => {
       if (!img.data) return false;
       // Use first 100 chars of data as a simple hash to detect duplicates
       const hash = img.data.slice(0, 100);
       if (seen.has(hash)) return false;
       seen.add(hash);
       return true;
+    });
+    // Sort by position (from backend) to maintain original PDF order
+    return uniqueImages.sort((a, b) => {
+      const posA = a.metadata?.position ?? a.metadata?.image_index ?? 0;
+      const posB = b.metadata?.position ?? b.metadata?.image_index ?? 0;
+      return posA - posB;
     });
   };
 
@@ -528,20 +534,25 @@ function PreviewContent({
                   {uniqueImages.length} image{uniqueImages.length > 1 ? "s" : ""} extracted from this page
                 </span>
               </div>
-              <div className="grid gap-3">
+              <div className="flex flex-col gap-3">
                 {uniqueImages.map((image, idx) => (
-                  <div key={idx} className="rounded-lg neo-border overflow-hidden bg-[#F5F2ED]">
+                  <div key={idx} className="inline-block rounded-lg neo-border overflow-hidden bg-[#F5F2ED] w-fit max-w-full">
                     <img
                       src={image.data}
                       alt={image.description || `Image ${idx + 1}`}
-                      className="w-full h-auto"
+                      className="h-auto max-w-full"
+                      style={{
+                        width: image.metadata?.extracted_width
+                          ? `${Math.min(image.metadata.extracted_width, 400)}px`
+                          : 'auto'
+                      }}
                       loading="lazy"
                     />
                     <div className="px-3 py-2 text-xs text-[#6B6B6B] border-t border-[#EDEAE4]">
                       <span className="font-display font-semibold">
                         {image.description || `Image ${idx + 1}`}
                       </span>
-                      {image.metadata && (
+                      {image.metadata?.extracted_width && image.metadata?.extracted_height && (
                         <span className="ml-2">
                           ({image.metadata.extracted_width}x{image.metadata.extracted_height})
                         </span>

@@ -127,6 +127,8 @@ export interface PDFImage {
     extracted_height?: number;
     image_type?: string;
     original_format?: string;
+    position?: number;  // Position in original document order
+    image_index?: number;
   };
 }
 
