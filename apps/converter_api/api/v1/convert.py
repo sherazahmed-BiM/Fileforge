@@ -6,12 +6,15 @@ Handles file upload and text extraction for multiple formats.
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.converter_api.dependencies import get_db
+from packages.common.auth.api_key import ApiKeyAuth
+from packages.common.auth.rate_limit import check_rate_limit
 from packages.common.core.config import settings
 from packages.common.core.logging import get_logger
+from packages.common.models.api_key import ApiKey
 from packages.common.services.conversion.local_converter_service import LocalConverterService
 
 
@@ -117,6 +120,7 @@ SUPPORTED_EXTENSIONS = {
 async def extract_document_text(
     file: UploadFile = File(..., description="Document file to process"),
     db: AsyncSession = Depends(get_db),
+    api_key: ApiKey | None = Depends(ApiKeyAuth(required=False)),
 ) -> dict:
     """
     Extract text from a document file.
@@ -133,7 +137,17 @@ async def extract_document_text(
         "statistics": { page_count, word_count, image_count },
         "warnings": []
     }
+
+    Authentication: Include X-API-Key header for authenticated access with rate limiting.
     """
+    # Apply rate limiting if API key is provided
+    if api_key:
+        await check_rate_limit(
+            key=f"api_key:{api_key.id}",
+            limit=api_key.rate_limit_rpm,
+            window=60,
+        )
+
     # Validate file
     if not file.filename:
         raise HTTPException(status_code=400, detail="Filename is required")

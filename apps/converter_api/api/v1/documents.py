@@ -4,7 +4,6 @@ Document Endpoints for FileForge
 CRUD operations for documents and chunks.
 """
 
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
@@ -12,7 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from apps.converter_api.dependencies import get_db
+from packages.common.auth.api_key import ApiKeyAuth
+from packages.common.auth.rate_limit import check_rate_limit
 from packages.common.core.logging import get_logger
+from packages.common.models.api_key import ApiKey
 from packages.common.models.chunk import Chunk
 from packages.common.models.document import Document, DocumentStatus
 from packages.common.schemas.document import (
@@ -37,11 +39,20 @@ router = APIRouter()
 async def list_documents(
     page: int = Query(default=1, ge=1, description="Page number"),
     page_size: int = Query(default=20, ge=1, le=100, description="Items per page"),
-    status_filter: Optional[DocumentStatus] = Query(default=None, description="Filter by status"),
-    file_type: Optional[str] = Query(default=None, description="Filter by file type"),
+    status_filter: DocumentStatus | None = Query(default=None, description="Filter by status"),
+    file_type: str | None = Query(default=None, description="Filter by file type"),
     db: AsyncSession = Depends(get_db),
+    api_key: ApiKey | None = Depends(ApiKeyAuth(required=False)),
 ) -> DocumentListResponse:
     """List all documents with pagination and filtering."""
+    # Apply rate limiting if API key is provided
+    if api_key:
+        await check_rate_limit(
+            key=f"api_key:{api_key.id}",
+            limit=api_key.rate_limit_rpm,
+            window=60,
+        )
+
     # Build query
     query = select(Document).order_by(Document.created_at.desc())
 
