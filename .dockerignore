@@ -1,0 +1,25 @@
+# Ignore frontend for Python worker builds
+apps/frontend/
+node_modules/
+
+# Ignore git
+.git/
+.github/
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Ignore local env
+.env
+.env.local
+.venv/
+
+# Ignore docs and tests for smaller builds
+tests/
+*.md
+!README.md
