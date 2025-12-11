@@ -40,8 +40,6 @@ dependencies = [
     "pandas>=2.2.0",             # CSV/data handling
     "pillow>=10.0.0",            # Image handling
     "pytesseract>=0.3.10",       # OCR (requires Tesseract installed)
-    # Legacy parsing (optional, for backward compatibility)
-    "unstructured[all-docs]>=0.16.0",
     # Chunking & Tokenization
     "tiktoken>=0.8.0",           # Token counting (OpenAI tokenizer)
     # Utilities
@@ -49,11 +47,12 @@ dependencies = [
     "python-multipart>=0.0.18",  # File uploads
     "python-magic>=0.4.27",      # File type detection
     "aiofiles>=24.1.0",          # Async file operations
-    # Docling with OCR (EasyOCR) - CPU-optimized build
-    # OCR extras: easyocr, tesserocr, rapidocr, ocrmac
-    # NOTE: VLM support removed to avoid GPU/CUDA dependencies
-    # VLM can be re-enabled with docling[vlm] if GPU is available
-    "docling[easyocr,asr]>=2.64.0",  # Docling with EasyOCR (CPU-only) + ASR for audio
+    # Docling - CPU-optimized build with system Tesseract for OCR
+    # Using base docling without heavy ML extras (easyocr, vlm, asr)
+    # OCR is handled by system Tesseract via pytesseract
+    "docling>=2.64.0",
+    # PyTorch CPU-only (explicit dep to force CPU index for transitive deps)
+    "torch>=2.0.0",
     # Additional format support
     "ebooklib>=0.18",            # EPUB ebook parsing
     "msg-parser>=1.2.0",         # Outlook MSG email files

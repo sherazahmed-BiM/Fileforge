@@ -1,104 +1,81 @@
 """
 Parser Service for FileForge
 
-Uses Unstructured.io for document parsing and text extraction.
-Optionally uses Docling for PDF extraction when available.
+Uses Docling as the primary document parsing and text extraction service.
+Implements custom chunking strategies without external ML dependencies.
 """
 
 import hashlib
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import tiktoken
-from unstructured.chunking.basic import chunk_elements
-from unstructured.chunking.title import chunk_by_title
-from unstructured.partition.auto import partition
 
-from packages.common.core.config import settings
 from packages.common.core.logging import get_logger
 from packages.common.schemas.convert import ChunkStrategy
+
 
 # Try to import docling extractor
 try:
     from packages.common.services.conversion.extractors.docling_extractor import (
         DoclingExtractor,
-        DoclingPDFExtractor,  # Backward compatibility
     )
     DOCLING_AVAILABLE = True
 except ImportError:
     DOCLING_AVAILABLE = False
     DoclingExtractor = None  # type: ignore
-    DoclingPDFExtractor = None  # type: ignore
 
 logger = get_logger(__name__)
 
 
-class UnstructuredElementAdapter:
+class ElementAdapter:
     """
-    Adapter to make ExtractedElement look like an Unstructured element.
-    
-    This allows docling extraction results to work with unstructured chunking.
+    Adapter to provide a consistent interface for extracted elements.
     """
 
     def __init__(self, element: Any, category: str = "NarrativeText"):
         """
         Initialize adapter.
-        
+
         Args:
             element: ExtractedElement from docling
             category: Element category (defaults to NarrativeText)
         """
         self._element = element
         self.category = category
-        # Create a simple metadata object
-        self.metadata = self._create_metadata()
-
-    def _create_metadata(self) -> Any:
-        """Create metadata object compatible with unstructured."""
-        class Metadata:
-            def __init__(self, page_number: Optional[int] = None, section: Optional[str] = None):
-                self.page_number = page_number
-                self.section = section
-                self.text_as_html = None
-                self.coordinates = None
-
-        return Metadata(
-            page_number=self._element.page_number,
-            section=self._element.section,
-        )
+        self.page_number = getattr(element, "page_number", None)
+        self.section = getattr(element, "section", None)
+        self.content = getattr(element, "content", str(element))
 
     def __str__(self) -> str:
         """Return element content as string."""
-        return self._element.content
+        return self.content
 
 
 class ParserService:
     """
-    Service for parsing documents using Docling as primary and Unstructured.io as fallback.
+    Service for parsing documents using Docling.
 
     Handles:
     - Document parsing (PDF, DOCX, XLSX, HTML, etc.)
     - Text extraction with metadata
     - Chunking (fixed and semantic)
     - Token counting
-    
-    Uses Docling as the primary extraction service for PDFs.
-    Falls back to Unstructured only if Docling is unavailable or fails.
     """
 
     def __init__(self):
-        """Initialize parser service with Docling as primary."""
+        """Initialize parser service with Docling."""
         # Initialize tiktoken encoder for token counting
         try:
             self.encoder = tiktoken.get_encoding("cl100k_base")  # GPT-4 tokenizer
         except Exception:
             self.encoder = tiktoken.get_encoding("gpt2")
-        
+
         self._docling_extractor = None
 
     @property
-    def docling_extractor(self) -> Optional[DoclingExtractor]:
-        """Lazy load docling extractor (primary service)."""
+    def docling_extractor(self) -> DoclingExtractor | None:
+        """Lazy load docling extractor."""
         if not DOCLING_AVAILABLE:
             return None
         if self._docling_extractor is None:
@@ -116,11 +93,11 @@ class ParserService:
     def parse_file(
         self,
         file_path: str | Path,
-        strategy: str = "auto",
+        strategy: str = "auto",  # noqa: ARG002 - kept for API compatibility
         extract_tables: bool = True,
         extract_images: bool = False,
         ocr_enabled: bool = True,
-        ocr_languages: str = "eng",
+        ocr_languages: str = "eng",  # noqa: ARG002 - kept for API compatibility
     ) -> tuple[list[Any], dict[str, Any]]:
         """
         Parse a file and extract elements.
@@ -139,52 +116,24 @@ class ParserService:
         file_path = Path(file_path)
         logger.info(f"Parsing file: {file_path}")
 
-        file_ext = file_path.suffix.lower()
+        if not DOCLING_AVAILABLE:
+            raise RuntimeError(
+                "Docling is not available. Please install docling package."
+            )
 
-        # Check if docling supports this file format
-        docling_supported_extensions = {
-            # Documents
-            ".pdf", ".docx", ".xlsx", ".pptx",
-            # Markup
-            ".html", ".htm", ".xhtml", ".md", ".markdown", ".adoc", ".asciidoc",
-            # Data
-            ".csv",
-            # Images
-            ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp", ".webp",
-            # Audio
-            ".wav", ".mp3",
-            # Docling JSON
-            ".json",
-        }
+        if not self.docling_extractor:
+            raise RuntimeError("Failed to initialize Docling extractor")
 
-        # Use docling as primary service for all supported formats
-        if file_ext in docling_supported_extensions:
-            if self.docling_extractor:
-                try:
-                    logger.info(f"Using Docling (primary) for {file_ext.upper()} extraction")
-                    return self._parse_with_docling(
-                        file_path,
-                        extract_tables=extract_tables,
-                        extract_images=extract_images,
-                        ocr_enabled=ocr_enabled,
-                    )
-                except Exception as e:
-                    logger.warning(
-                        f"Docling extraction failed, falling back to Unstructured: {e}"
-                    )
-                    # Fall through to unstructured fallback
-            else:
-                logger.info(f"Docling unavailable, using Unstructured for {file_ext}")
-
-        # Fall back to unstructured for unsupported formats or when docling unavailable/failed
-        return self._parse_with_unstructured(
-            file_path,
-            strategy=strategy,
-            extract_tables=extract_tables,
-            extract_images=extract_images,
-            ocr_enabled=ocr_enabled,
-            ocr_languages=ocr_languages,
-        )
+        try:
+            return self._parse_with_docling(
+                file_path,
+                extract_tables=extract_tables,
+                extract_images=extract_images,
+                ocr_enabled=ocr_enabled,
+            )
+        except Exception as e:
+            logger.error(f"Docling extraction failed: {e}")
+            raise
 
     def _parse_with_docling(
         self,
@@ -193,13 +142,11 @@ class ParserService:
         extract_images: bool = False,
         ocr_enabled: bool = True,
     ) -> tuple[list[Any], dict[str, Any]]:
-        """Parse file using Docling (primary service for all supported formats)."""
+        """Parse file using Docling."""
         if not DOCLING_AVAILABLE:
             raise RuntimeError("Docling is not available")
 
         # Create extractor with current settings
-        # Note: Converter initialization happens lazily on first use
-        # and is cached per extractor instance for performance
         extractor = DoclingExtractor(
             enable_ocr=ocr_enabled,
             enable_tables=extract_tables,
@@ -207,17 +154,15 @@ class ParserService:
         )
 
         # Extract using docling
-        # First extraction will initialize the converter (takes ~20s)
-        # Subsequent extractions with same settings reuse the converter
         extraction_result = extractor.extract(
             file_path,
             extract_images=extract_images,
         )
 
-        # Convert ExtractionResult to unstructured-like elements
+        # Convert ExtractionResult to element adapters
         elements = []
         for el in extraction_result.elements:
-            # Map element types to unstructured categories
+            # Map element types to categories
             category_map = {
                 "text": "NarrativeText",
                 "title": "Title",
@@ -227,8 +172,8 @@ class ParserService:
                 "image": "Figure",
             }
             category = category_map.get(el.element_type.value, "NarrativeText")
-            
-            adapter = UnstructuredElementAdapter(el, category=category)
+
+            adapter = ElementAdapter(el, category=category)
             elements.append(adapter)
 
         # Extract metadata
@@ -251,83 +196,6 @@ class ParserService:
 
         return elements, metadata
 
-    def _parse_with_unstructured(
-        self,
-        file_path: Path,
-        strategy: str = "auto",
-        extract_tables: bool = True,
-        extract_images: bool = False,
-        ocr_enabled: bool = True,
-        ocr_languages: str = "eng",
-    ) -> tuple[list[Any], dict[str, Any]]:
-        """Parse file using Unstructured."""
-        # Determine parsing strategy
-        partition_kwargs: dict[str, Any] = {
-            "filename": str(file_path),
-            "infer_table_structure": extract_tables,
-        }
-
-        # Handle different file types
-        file_ext = file_path.suffix.lower()
-
-        if file_ext == ".pdf":
-            partition_kwargs.update({
-                "strategy": strategy if strategy != "auto" else "fast",
-                "extract_images_in_pdf": extract_images,
-            })
-            if ocr_enabled:
-                partition_kwargs["languages"] = ocr_languages.split(",")
-
-        elif file_ext in [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff"]:
-            if ocr_enabled:
-                partition_kwargs["languages"] = ocr_languages.split(",")
-
-        try:
-            elements = partition(**partition_kwargs)
-            logger.info(f"Extracted {len(elements)} elements from {file_path.name} using Unstructured")
-        except Exception as e:
-            logger.error(f"Failed to parse {file_path}: {e}")
-            raise
-
-        # Extract metadata
-        metadata = self._extract_metadata(elements, file_path)
-        metadata["extraction_method"] = "unstructured"
-
-        return elements, metadata
-
-    def _extract_metadata(self, elements: list[Any], file_path: Path) -> dict[str, Any]:
-        """Extract document metadata from elements."""
-        metadata: dict[str, Any] = {
-            "filename": file_path.name,
-            "file_extension": file_path.suffix.lower(),
-        }
-
-        # Get page count
-        page_numbers = set()
-        for el in elements:
-            if hasattr(el, "metadata") and hasattr(el.metadata, "page_number"):
-                if el.metadata.page_number is not None:
-                    page_numbers.add(el.metadata.page_number)
-
-        if page_numbers:
-            metadata["page_count"] = max(page_numbers)
-
-        # Count element types
-        element_counts: dict[str, int] = {}
-        for el in elements:
-            category = getattr(el, "category", "Unknown")
-            element_counts[category] = element_counts.get(category, 0) + 1
-
-        metadata["element_counts"] = element_counts
-
-        # Extract document properties if available
-        if elements and hasattr(elements[0], "metadata"):
-            el_metadata = elements[0].metadata
-            if hasattr(el_metadata, "languages"):
-                metadata["languages"] = el_metadata.languages
-
-        return metadata
-
     def chunk_elements(
         self,
         elements: list[Any],
@@ -339,7 +207,7 @@ class ParserService:
         Chunk elements using the specified strategy.
 
         Args:
-            elements: List of Unstructured elements
+            elements: List of elements
             strategy: Chunking strategy
             chunk_size: Target chunk size in characters
             chunk_overlap: Overlap between chunks
@@ -353,30 +221,165 @@ class ParserService:
 
         if strategy == ChunkStrategy.SEMANTIC:
             # Semantic chunking by title/section
-            chunked = chunk_by_title(
-                elements,
-                max_characters=chunk_size,
-                new_after_n_chars=int(chunk_size * 0.8),
-                combine_text_under_n_chars=int(chunk_size * 0.3),
-                multipage_sections=True,
-            )
+            return self._chunk_by_semantic(elements, chunk_size)
         else:
             # Fixed-size chunking
-            chunked = chunk_elements(
-                elements,
-                max_characters=chunk_size,
-                new_after_n_chars=int(chunk_size * 0.8),
-                overlap=chunk_overlap,
-            )
+            return self._chunk_fixed_size(elements, chunk_size, chunk_overlap)
 
-        return self._elements_to_chunks(chunked)
+    def _chunk_by_semantic(
+        self,
+        elements: list[Any],
+        max_chunk_size: int = 1000,
+    ) -> list[dict[str, Any]]:
+        """
+        Chunk elements semantically by grouping under titles/headings.
+
+        Args:
+            elements: List of elements
+            max_chunk_size: Maximum chunk size in characters
+
+        Returns:
+            List of chunk dictionaries
+        """
+        chunks = []
+        current_chunk_texts: list[str] = []
+        current_chunk_size = 0
+        current_section: str | None = None
+        current_page: int | None = None
+
+        for element in elements:
+            text = str(element)
+            text_len = len(text)
+            category = getattr(element, "category", "NarrativeText")
+            page = getattr(element, "page_number", None)
+            section = getattr(element, "section", None)
+
+            # Check if this is a title/heading that should start a new chunk
+            is_title = category in ("Title", "Header", "Heading")
+
+            # Start new chunk if:
+            # 1. Current chunk + new text exceeds max size, OR
+            # 2. We hit a new title/section
+            should_split = (
+                current_chunk_size + text_len > max_chunk_size
+                and current_chunk_texts
+            ) or (is_title and current_chunk_texts)
+
+            if should_split:
+                # Save current chunk
+                chunk_text = "\n\n".join(current_chunk_texts)
+                if chunk_text.strip():
+                    chunks.append({
+                        "index": len(chunks),
+                        "text": chunk_text,
+                        "text_length": len(chunk_text),
+                        "token_count": self.count_tokens(chunk_text),
+                        "element_category": "NarrativeText",
+                        "source_page": current_page,
+                        "source_section": current_section,
+                        "metadata": {},
+                    })
+
+                # Reset for new chunk
+                current_chunk_texts = []
+                current_chunk_size = 0
+
+            # Add text to current chunk
+            if text.strip():
+                current_chunk_texts.append(text)
+                current_chunk_size += text_len
+
+            # Update tracking
+            if page:
+                current_page = page
+            if section:
+                current_section = section
+
+        # Don't forget the last chunk
+        if current_chunk_texts:
+            chunk_text = "\n\n".join(current_chunk_texts)
+            if chunk_text.strip():
+                chunks.append({
+                    "index": len(chunks),
+                    "text": chunk_text,
+                    "text_length": len(chunk_text),
+                    "token_count": self.count_tokens(chunk_text),
+                    "element_category": "NarrativeText",
+                    "source_page": current_page,
+                    "source_section": current_section,
+                    "metadata": {},
+                })
+
+        return chunks
+
+    def _chunk_fixed_size(
+        self,
+        elements: list[Any],
+        chunk_size: int = 1000,
+        chunk_overlap: int = 100,
+    ) -> list[dict[str, Any]]:
+        """
+        Chunk elements using fixed-size chunking with overlap.
+
+        Args:
+            elements: List of elements
+            chunk_size: Target chunk size in characters
+            chunk_overlap: Overlap between chunks
+
+        Returns:
+            List of chunk dictionaries
+        """
+        # First, get all text combined
+        full_text = "\n\n".join(str(el) for el in elements)
+
+        if not full_text.strip():
+            return []
+
+        chunks = []
+        start = 0
+        text_len = len(full_text)
+
+        while start < text_len:
+            # Calculate end position
+            end = min(start + chunk_size, text_len)
+
+            # Try to break at a sentence or word boundary
+            if end < text_len:
+                # Look for sentence boundary (. ! ?)
+                for boundary in [". ", "! ", "? ", "\n\n", "\n", " "]:
+                    boundary_pos = full_text.rfind(boundary, start, end)
+                    if boundary_pos > start + chunk_size // 2:
+                        end = boundary_pos + len(boundary)
+                        break
+
+            chunk_text = full_text[start:end].strip()
+
+            if chunk_text:
+                chunks.append({
+                    "index": len(chunks),
+                    "text": chunk_text,
+                    "text_length": len(chunk_text),
+                    "token_count": self.count_tokens(chunk_text),
+                    "element_category": "NarrativeText",
+                    "source_page": None,
+                    "source_section": None,
+                    "metadata": {},
+                })
+
+            # Move start position with overlap
+            start = end - chunk_overlap if end < text_len else text_len
+
+        return chunks
 
     def _elements_to_chunks(self, elements: list[Any]) -> list[dict[str, Any]]:
-        """Convert Unstructured elements to chunk dictionaries."""
+        """Convert elements to chunk dictionaries (no chunking)."""
         chunks = []
 
         for idx, element in enumerate(elements):
             text = str(element)
+            if not text.strip():
+                continue
+
             token_count = self.count_tokens(text)
 
             chunk = {
@@ -385,25 +388,16 @@ class ParserService:
                 "text_length": len(text),
                 "token_count": token_count,
                 "element_category": getattr(element, "category", None),
+                "source_page": getattr(element, "page_number", None),
+                "source_section": getattr(element, "section", None),
                 "metadata": {},
             }
 
-            # Extract element metadata
-            if hasattr(element, "metadata"):
-                el_meta = element.metadata
-                if hasattr(el_meta, "page_number") and el_meta.page_number:
-                    chunk["source_page"] = el_meta.page_number
-                if hasattr(el_meta, "section"):
-                    chunk["source_section"] = el_meta.section
-                if hasattr(el_meta, "text_as_html") and el_meta.text_as_html:
-                    chunk["metadata"]["html"] = el_meta.text_as_html
-                if hasattr(el_meta, "coordinates") and el_meta.coordinates:
-                    chunk["metadata"]["coordinates"] = {
-                        "points": el_meta.coordinates.points,
-                        "system": el_meta.coordinates.system,
-                    }
-
             chunks.append(chunk)
+
+        # Re-index after filtering empty elements
+        for idx, chunk in enumerate(chunks):
+            chunk["index"] = idx
 
         return chunks
 
@@ -457,7 +451,7 @@ class ParserService:
         return type_map.get(ext, "unknown")
 
     @staticmethod
-    def get_mime_type(file_path: str | Path) -> Optional[str]:
+    def get_mime_type(file_path: str | Path) -> str | None:
         """Get MIME type using python-magic."""
         try:
             import magic
