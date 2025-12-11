@@ -623,3 +623,149 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
+
+/* ========================================
+   DOCX PREVIEW STYLES
+   ======================================== */
+
+.docx-preview {
+  color: #1A1A1A;
+  line-height: 1.8;
+}
+
+.docx-preview h1,
+.docx-preview h2,
+.docx-preview h3,
+.docx-preview h4,
+.docx-preview h5,
+.docx-preview h6 {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-weight: 700;
+  margin-top: 1.5em;
+  margin-bottom: 0.75em;
+  line-height: 1.3;
+  color: #1A1A1A;
+}
+
+.docx-preview h1 {
+  font-size: 2em;
+  border-bottom: 2.5px solid #2C2C2C;
+  padding-bottom: 0.5em;
+}
+
+.docx-preview h2 {
+  font-size: 1.75em;
+}
+
+.docx-preview h3 {
+  font-size: 1.5em;
+}
+
+.docx-preview h4 {
+  font-size: 1.25em;
+}
+
+.docx-preview h5 {
+  font-size: 1.1em;
+}
+
+.docx-preview h6 {
+  font-size: 1em;
+}
+
+.docx-preview p {
+  margin-bottom: 1em;
+  font-family: 'Inter', system-ui, sans-serif;
+  line-height: 1.8;
+}
+
+.docx-preview ul,
+.docx-preview ol {
+  margin: 1em 0;
+  padding-left: 2em;
+}
+
+.docx-preview li {
+  margin-bottom: 0.5em;
+  line-height: 1.8;
+}
+
+.docx-preview strong {
+  font-weight: 600;
+  color: #1A1A1A;
+}
+
+.docx-preview em {
+  font-style: italic;
+}
+
+.docx-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5em 0;
+  border: 2.5px solid #2C2C2C;
+}
+
+.docx-preview table th,
+.docx-preview table td {
+  border: 2.5px solid #2C2C2C;
+  padding: 0.75em;
+  text-align: left;
+}
+
+.docx-preview table th {
+  background-color: #F5F2ED;
+  font-weight: 600;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+}
+
+.docx-preview blockquote {
+  border-left: 4px solid #C4705A;
+  padding-left: 1.5em;
+  margin: 1.5em 0;
+  font-style: italic;
+  color: #6B6B6B;
+}
+
+.docx-preview code {
+  background-color: #F5F2ED;
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+  border: 1px solid #EDEAE4;
+}
+
+.docx-preview pre {
+  background-color: #F5F2ED;
+  padding: 1em;
+  border-radius: 8px;
+  border: 2.5px solid #2C2C2C;
+  overflow-x: auto;
+  margin: 1.5em 0;
+}
+
+.docx-preview pre code {
+  background-color: transparent;
+  padding: 0;
+  border: none;
+}
+
+.docx-preview img {
+  max-width: 100%;
+  height: auto;
+  margin: 1.5em 0;
+  border: 2.5px solid #2C2C2C;
+  border-radius: 8px;
+}
+
+.docx-preview a {
+  color: #C4705A;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+
+.docx-preview a:hover {
+  color: #A65D4A;
+}

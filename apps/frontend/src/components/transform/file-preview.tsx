@@ -14,6 +14,14 @@ const Page = dynamic(
   { ssr: false }
 );
 
+// Dynamically import mammoth for DOCX conversion (only on client)
+let mammoth: typeof import("mammoth") | null = null;
+if (typeof window !== "undefined") {
+  import("mammoth").then((mod) => {
+    mammoth = mod;
+  });
+}
+
 
 // Set up PDF.js worker (only runs on client)
 if (typeof window !== "undefined") {
@@ -75,6 +83,11 @@ export function FilePreview({
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
+  
+  // DOCX preview state
+  const [docxHtml, setDocxHtml] = useState<string | null>(null);
+  const [docxLoading, setDocxLoading] = useState<boolean>(false);
+  const [docxError, setDocxError] = useState<string | null>(null);
 
   // Measure container size on mount and resize
   useEffect(() => {
@@ -117,6 +130,60 @@ export function FilePreview({
     scrollContainer.addEventListener("scroll", handleScroll);
     return () => scrollContainer.removeEventListener("scroll", handleScroll);
   }, [numPages]);
+
+  // Convert DOCX to HTML when file changes
+  useEffect(() => {
+    const isDocx = fileType?.toLowerCase() === "docx";
+    
+    if (!isDocx || !fileUrl) {
+      setDocxHtml(null);
+      setDocxError(null);
+      return;
+    }
+
+    const convertDocx = async () => {
+      if (!mammoth) {
+        // Wait for mammoth to load
+        const mod = await import("mammoth");
+        mammoth = mod;
+      }
+
+      setDocxLoading(true);
+      setDocxError(null);
+      setDocxHtml(null);
+
+      try {
+        const response = await fetch(fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        
+        const result = await mammoth.convertToHtml(
+          { arrayBuffer },
+          {
+            styleMap: [
+              "p[style-name='Heading 1'] => h1:fresh",
+              "p[style-name='Heading 2'] => h2:fresh",
+              "p[style-name='Heading 3'] => h3:fresh",
+              "p[style-name='Heading 4'] => h4:fresh",
+              "p[style-name='Heading 5'] => h5:fresh",
+              "p[style-name='Heading 6'] => h6:fresh",
+            ],
+          }
+        );
+
+        setDocxHtml(result.value);
+        if (result.messages.length > 0) {
+          console.warn("DOCX conversion warnings:", result.messages);
+        }
+      } catch (error) {
+        console.error("Failed to convert DOCX:", error);
+        setDocxError(error instanceof Error ? error.message : "Failed to load DOCX");
+      } finally {
+        setDocxLoading(false);
+      }
+    };
+
+    convertDocx();
+  }, [fileUrl, fileType]);
 
   const onDocumentLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
@@ -176,6 +243,7 @@ export function FilePreview({
   const isImage = ["png", "jpg", "jpeg", "gif", "bmp", "tiff"].includes(
     fileType?.toLowerCase() || ""
   );
+  const isDocx = fileType?.toLowerCase() === "docx";
 
   return (
     <div className="flex-1 flex flex-col bg-[#F5F2ED] min-w-0 h-full overflow-hidden">
@@ -300,6 +368,37 @@ export function FilePreview({
                     className="max-w-full max-h-full object-contain"
                     style={{ border: 'none', outline: 'none' }}
                   />
+                </div>
+              ) : isDocx ? (
+                <div className="w-full max-w-4xl bg-white neo-border rounded-2xl p-8 my-8 neo-shadow">
+                  {docxLoading ? (
+                    <div className="flex items-center justify-center min-h-[400px]">
+                      <div className="text-center">
+                        <LoadingSpinner className="w-10 h-10 text-[#C4705A] mx-auto mb-3" />
+                        <p className="text-sm font-body text-[#6B6B6B]">Loading DOCX...</p>
+                      </div>
+                    </div>
+                  ) : docxError ? (
+                    <div className="flex items-center justify-center min-h-[400px]">
+                      <div className="text-center">
+                        <div className="w-16 h-16 rounded-2xl bg-[#FEF2F2] neo-border flex items-center justify-center mx-auto mb-4">
+                          <FileIcon className="w-8 h-8 text-[#B54A4A]" />
+                        </div>
+                        <p className="font-display font-bold text-[#1A1A1A]">Failed to load DOCX</p>
+                        <p className="text-sm font-body text-[#6B6B6B] mt-1">{docxError}</p>
+                      </div>
+                    </div>
+                  ) : docxHtml ? (
+                    <div
+                      className="prose prose-lg max-w-none docx-preview"
+                      dangerouslySetInnerHTML={{ __html: docxHtml }}
+                      style={{
+                        fontFamily: 'system-ui, -apple-system, sans-serif',
+                        lineHeight: '1.6',
+                        color: '#1A1A1A',
+                      }}
+                    />
+                  ) : null}
                 </div>
               ) : (
                 <div className="flex-1 flex items-center justify-center h-full">
