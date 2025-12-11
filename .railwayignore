@@ -1,0 +1,5 @@
+# Ignore frontend for Python services
+apps/frontend/
+node_modules/
+package.json
+package-lock.json

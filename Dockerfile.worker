@@ -155,5 +155,9 @@ ENV HOME="/tmp"
 # Default command: run Celery worker
 # --pool=solo: Use single process (avoids multiprocessing issues in containers)
 # --concurrency=1: Process one task at a time (adjust based on CPU/memory)
-# Using ENTRYPOINT to prevent Railway from overriding with npm
-ENTRYPOINT ["celery", "-A", "packages.common.core.celery_app", "worker", "--loglevel=info", "--pool=solo", "--concurrency=1"]
+#
+# IMPORTANT: If Railway tries to run 'npm', clear the Custom Start Command
+# in Railway Dashboard > Service Settings > Deploy section
+#
+# Using shell form to ensure the command runs correctly
+CMD ["celery", "-A", "packages.common.core.celery_app", "worker", "--loglevel=info", "--pool=solo", "--concurrency=1"]
