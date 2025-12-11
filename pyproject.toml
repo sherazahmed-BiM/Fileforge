@@ -49,13 +49,19 @@ dependencies = [
     "python-multipart>=0.0.18",  # File uploads
     "python-magic>=0.4.27",      # File type detection
     "aiofiles>=24.1.0",          # Async file operations
-    # Docling with OCR (EasyOCR) and VLM support (for maximum accuracy)
+    # Docling with OCR (EasyOCR) - CPU-optimized build
     # OCR extras: easyocr, tesserocr, rapidocr, ocrmac
-    # VLM: Uses GraniteDocling (ibm-granite/granite-vision-3.2-2b) for:
-    #   - Picture/image description and understanding
-    #   - Complex document layout analysis
-    #   - End-to-end document understanding
-    "docling[easyocr,vlm]>=2.64.0",  # Full Docling with EasyOCR and VLM support
+    # NOTE: VLM support removed to avoid GPU/CUDA dependencies
+    # VLM can be re-enabled with docling[vlm] if GPU is available
+    "docling[easyocr]>=2.64.0",  # Docling with EasyOCR (CPU-only)
+    # Additional format support
+    "ebooklib>=0.18",            # EPUB ebook parsing
+    "msg-parser>=1.2.0",         # Outlook MSG email files
+    "dbfread>=2.0.7",            # dBase DBF database files
+    "pypandoc>=1.14",            # RST, ORG markup conversion (requires pandoc)
+    "pillow-heif>=0.18.0",       # HEIC/HEIF image support
+    "beautifulsoup4>=4.12.0",    # HTML parsing for email/epub
+    "lxml>=5.0.0",               # XML/HTML parsing backend
 ]
 
 [dependency-groups]
@@ -126,16 +132,16 @@ exclude_lines = [
 ]
 
 
-# ... existing content ...
+# PyTorch CPU-only configuration
+# This ensures torch is installed from the CPU-only index (no CUDA/nvidia deps)
+# See: https://docs.astral.sh/uv/guides/integration/pytorch/
 
-[tool.uv]
-# Add a specific index for PyTorch CPU versions
-index = [
-    { name = "pytorch-cpu", url = "https://download.pytorch.org/whl/cpu", explicit = true },
-]
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [tool.uv.sources]
-# Force torch and related libs to use the CPU index
+# Force torch and related libs to use the CPU-only index
 torch = [{ index = "pytorch-cpu" }]
 torchvision = [{ index = "pytorch-cpu" }]
-torchaudio = [{ index = "pytorch-cpu" }]

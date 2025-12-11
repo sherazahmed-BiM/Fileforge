@@ -52,14 +52,32 @@ class ApplicationDefaults:
     MAX_FILE_SIZE: int = 104857600  # 100MB
     UPLOAD_DIR: str = "/tmp/fileforge/uploads"
     SUPPORTED_EXTENSIONS: list[str] = [
-        # Documents
+        # Documents - Modern Office
         ".pdf", ".docx", ".xlsx", ".pptx",
+        # Documents - Legacy Office (via LibreOffice)
+        ".doc", ".dot", ".dotm", ".dotx", ".rtf",
+        ".xls", ".xlm", ".xlt",
+        ".ppt", ".pot", ".pptm", ".pps", ".ppsx",
+        # Documents - Open Document Format (via LibreOffice)
+        ".odt", ".ott", ".ods", ".ots", ".odp", ".otp",
+        # Documents - Legacy Word Processing (via LibreOffice)
+        ".abw", ".zabw", ".hwp", ".sxw", ".sxg", ".wpd", ".wps", ".cwk", ".mcw",
+        # Spreadsheets - Legacy (via LibreOffice)
+        ".et", ".fods", ".sxc", ".wk1", ".wks", ".dif",
+        # Presentations - Legacy (via LibreOffice)
+        ".sxi",
         # Markup
         ".html", ".htm", ".xhtml", ".md", ".markdown", ".adoc", ".asciidoc",
+        ".rst", ".org",
         # Data
-        ".csv",
+        ".csv", ".tsv", ".dbf",
         # Images (OCR supported)
         ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp", ".webp", ".gif",
+        ".heic", ".heif",
+        # Email
+        ".eml", ".msg", ".p7s",
+        # Ebooks
+        ".epub",
     ]
 
     # ==================== Chunking ====================

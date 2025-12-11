@@ -2,7 +2,15 @@
 Document Processor for FileForge
 
 Processes multiple document formats and extracts text content.
-Supports: PDF, DOCX, XLSX, PPTX, HTML, Markdown, images (OCR), and more.
+
+Supported formats:
+- Modern Office: PDF, DOCX, XLSX, PPTX
+- Legacy Office: DOC, XLS, PPT, RTF, ODT, etc. (via LibreOffice)
+- Markup: HTML, Markdown, RST, ORG, AsciiDoc
+- Email: EML, MSG, P7S
+- Ebooks: EPUB
+- Data: CSV, TSV, DBF, DIF
+- Images: PNG, JPG, TIFF, BMP, WEBP, GIF, HEIC (with OCR)
 """
 
 import hashlib
@@ -10,27 +18,20 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from packages.common.services.conversion.extractors.base import (
-    ExtractionResult,
-    ElementType,
-    StructuredTableData,
-)
 from packages.common.core.logging import get_logger
+from packages.common.services.conversion.extractors.base import (
+    ElementType,
+    ExtractionResult,
+)
+from packages.common.services.conversion.extractors.universal_extractor import (
+    UniversalExtractor,
+)
 
 
 logger = get_logger(__name__)
 
-# All supported file extensions
-SUPPORTED_EXTENSIONS = {
-    # Documents
-    ".pdf", ".docx", ".xlsx", ".pptx",
-    # Markup
-    ".html", ".htm", ".xhtml", ".md", ".markdown", ".adoc", ".asciidoc",
-    # Data
-    ".csv",
-    # Images (OCR supported)
-    ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp", ".webp", ".gif",
-}
+# Use UniversalExtractor's extensions as single source of truth
+SUPPORTED_EXTENSIONS = UniversalExtractor.SUPPORTED_EXTENSIONS
 
 
 @dataclass
@@ -192,8 +193,19 @@ class DocumentProcessor:
     """
     Document processor for extracting text from multiple file formats.
 
-    Uses Docling as the primary extraction service.
-    Supports: PDF, DOCX, XLSX, PPTX, HTML, Markdown, CSV, images (OCR), audio, and more.
+    Uses UniversalExtractor as the primary extraction service, which routes to:
+    - Docling for modern formats (PDF, DOCX, XLSX, PPTX, HTML, MD, CSV, images)
+    - LibreOffice + Docling for legacy formats (DOC, XLS, PPT, RTF, ODT, etc.)
+    - Specialized parsers for email, ebooks, and data formats
+
+    Supported formats:
+    - Modern Office: PDF, DOCX, XLSX, PPTX
+    - Legacy Office: DOC, XLS, PPT, RTF, ODT, etc. (via LibreOffice)
+    - Markup: HTML, Markdown, RST, ORG, AsciiDoc
+    - Email: EML, MSG, P7S
+    - Ebooks: EPUB
+    - Data: CSV, TSV, DBF, DIF
+    - Images: PNG, JPG, TIFF, BMP, WEBP, GIF, HEIC (with OCR)
 
     Usage:
         processor = DocumentProcessor()
@@ -202,25 +214,37 @@ class DocumentProcessor:
     """
 
     def __init__(self):
-        """Initialize document processor with Docling as primary."""
+        """Initialize document processor with UniversalExtractor as primary."""
         self._extractor = None
 
     @property
     def extractor(self):
-        """Lazy load document extractor (Docling)."""
+        """Lazy load document extractor (UniversalExtractor → Docling → PyMuPDF fallback)."""
         if self._extractor is None:
+            # Try UniversalExtractor first (handles all formats)
             try:
-                from packages.common.services.conversion.extractors.docling_extractor import (
-                    DoclingExtractor,
+                from packages.common.services.conversion.extractors.universal_extractor import (
+                    UniversalExtractor,
                 )
-                self._extractor = DoclingExtractor()
-                logger.info("Using Docling for document extraction")
+                self._extractor = UniversalExtractor()
+                logger.info("Using UniversalExtractor for document extraction")
             except (ImportError, Exception) as e:
-                logger.warning(f"Docling not available: {e}")
-                # Fall back to PDF-only extractor if Docling fails
-                from packages.common.services.conversion.extractors.pdf_extractor import PDFExtractor
-                self._extractor = PDFExtractor()
-                logger.info("Falling back to PyMuPDF (PDF only)")
+                logger.warning(f"UniversalExtractor not available: {e}")
+                # Fall back to DoclingExtractor
+                try:
+                    from packages.common.services.conversion.extractors.docling_extractor import (
+                        DoclingExtractor,
+                    )
+                    self._extractor = DoclingExtractor()
+                    logger.info("Falling back to DoclingExtractor")
+                except (ImportError, Exception) as e2:
+                    logger.warning(f"Docling not available: {e2}")
+                    # Final fallback to PDF-only extractor
+                    from packages.common.services.conversion.extractors.pdf_extractor import (
+                        PDFExtractor,
+                    )
+                    self._extractor = PDFExtractor()
+                    logger.info("Falling back to PyMuPDF (PDF only)")
         return self._extractor
 
     def process(self, file_path: str | Path, **options: Any) -> ProcessingResult:

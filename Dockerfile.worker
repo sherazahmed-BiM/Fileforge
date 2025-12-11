@@ -1,69 +1,159 @@
 # ============================================================
-#  BUILDER STAGE — Python + uv + deps
+#  FileForge Worker Dockerfile - CPU-Optimized Build
+#
+#  Optimizations applied:
+#  - Multi-stage build to minimize final image size
+#  - CPU-only PyTorch (no CUDA/NVIDIA dependencies)
+#  - Separated build-time and runtime dependencies
+#  - Layer caching for faster rebuilds
+#  - Non-root user for security
+#
+#  Supported formats:
+#  - Modern: PDF, DOCX, XLSX, PPTX, HTML, MD, CSV, images
+#  - Legacy Office: DOC, XLS, PPT, RTF, ODT (via LibreOffice)
+#  - Email: EML, MSG, P7S
+#  - Ebooks: EPUB
+#  - Data: DBF, DIF, TSV
+#  - Markup: RST, ORG (via Pandoc)
+#  - Images: PNG, JPG, TIFF, BMP, WEBP, GIF, HEIC
+# ============================================================
+
+# ============================================================
+#  BUILDER STAGE — Install dependencies with uv
 # ============================================================
 FROM python:3.12-slim AS builder
 
-# Install system dependencies
+# Install build-time system dependencies
+# - build-essential: C compiler for native extensions
+# - libpq-dev: PostgreSQL development headers
+# - libffi-dev: Foreign function interface (needed by some packages)
+# - libheif-dev: HEIC/HEIF image support build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
-    libmagic1 \
-    poppler-utils \
-    tesseract-ocr \
-    tesseract-ocr-eng \
-    libreoffice \
-    pandoc \
+    libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Correctly copy uv from the distroless image
+# Copy uv from official image
 COPY --from=ghcr.io/astral-sh/uv:0.9.17 /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-# Compile bytecode for faster startup
+# uv settings for optimal Docker builds
 ENV UV_COMPILE_BYTECODE=1
-# Use copy mode to avoid hardlink issues between stages
 ENV UV_LINK_MODE=copy
+# Ensure CPU-only PyTorch is used
+ENV UV_INDEX_STRATEGY=first-index
 
-# Copy dependency files
-COPY pyproject.toml uv.lock* README.md ./
+# Copy dependency files first (better layer caching)
+COPY pyproject.toml uv.lock README.md ./
 
-# Install dependencies
-# Because we updated pyproject.toml to use the CPU index, this will be much smaller/faster
-RUN uv sync --frozen --no-dev
+# Install dependencies without dev packages
+# The uv.lock already specifies CPU-only PyTorch via [tool.uv.sources]
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
 
-# Copy app code
+# Copy application code
 COPY packages/ ./packages/
 COPY apps/ ./apps/
 
 
 # ============================================================
-#  RUNTIME STAGE
+#  RUNTIME STAGE — Minimal production image
 # ============================================================
-FROM python:3.12-slim
+FROM python:3.12-slim AS runtime
 
-# Install runtime system packages
+# Install runtime system dependencies (grouped by purpose)
+#
+# Database:
+#   - libpq5: PostgreSQL client library
+#
+# File detection:
+#   - libmagic1: File type detection (python-magic)
+#
+# PDF processing:
+#   - poppler-utils: PDF utilities (pdftotext, pdftoppm, pdfinfo)
+#
+# OCR:
+#   - tesseract-ocr: OCR engine
+#   - tesseract-ocr-eng: English language data
+#
+# Legacy Office conversion (LibreOffice):
+#   - libreoffice-writer-nogui: Word processing (DOC, RTF, ODT)
+#   - libreoffice-calc-nogui: Spreadsheets (XLS, ODS)
+#   - libreoffice-impress-nogui: Presentations (PPT, ODP)
+#   - Using -nogui variants saves ~500MB vs full libreoffice
+#
+# Document conversion:
+#   - pandoc: Universal document converter (RST, ORG, MD)
+#
+# Image processing:
+#   - libgl1: OpenGL (required by OpenCV)
+#   - libglib2.0-0: GLib (required by OpenCV)
+#   - libheif1: HEIC/HEIF image support
+#
+# XML/HTML parsing:
+#   - libxml2: XML parser (lxml backend)
+#   - libxslt1.1: XSLT processor
+#
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Database
     libpq5 \
+    # File detection
     libmagic1 \
+    # PDF
     poppler-utils \
+    # OCR
     tesseract-ocr \
     tesseract-ocr-eng \
-    libreoffice \
+    # LibreOffice (nogui variants for smaller image)
+    libreoffice-writer-nogui \
+    libreoffice-calc-nogui \
+    libreoffice-impress-nogui \
+    # Document conversion
     pandoc \
-    && rm -rf /var/lib/apt/lists/*
+    # Image processing
+    libgl1 \
+    libglib2.0-0 \
+    libheif1 \
+    # XML/HTML
+    libxml2 \
+    libxslt1.1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
+# Create non-root user for security
 RUN useradd --create-home --shell /bin/bash appuser
 
 WORKDIR /app
 
-# --- OPTIMIZATION HERE ---
-# Instead of "RUN chown -R ...", we set ownership during the COPY.
-# This prevents the "exporting to docker image" step from hanging.
+# Copy virtual environment and app code from builder
+# Using --chown during COPY prevents slow chown -R operations
 COPY --chown=appuser:appuser --from=builder /app/.venv /app/.venv
 COPY --chown=appuser:appuser --from=builder /app/packages /app/packages
 COPY --chown=appuser:appuser --from=builder /app/apps /app/apps
 
+# Switch to non-root user
 USER appuser
 
+# Environment configuration
 ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONPATH="/app"
+ENV PYTHONUNBUFFERED=1
+
+# CPU-only inference settings for PyTorch/EasyOCR
+ENV CUDA_VISIBLE_DEVICES=""
+ENV TORCH_DEVICE="cpu"
+
+# Docling settings (disable VLM which requires GPU)
+ENV DOCLING_ENABLE_VLM="false"
+ENV DOCLING_ENABLE_OCR="true"
+
+# LibreOffice settings
+# Use a temp directory for LibreOffice profile to avoid permission issues
+ENV HOME="/tmp"
+
+# Default command: run Celery worker
+# --pool=solo: Use single process (avoids multiprocessing issues in containers)
+# --concurrency=1: Process one task at a time (adjust based on CPU/memory)
+CMD ["celery", "-A", "packages.common.core.celery_app", "worker", "--loglevel=info", "--pool=solo", "--concurrency=1"]

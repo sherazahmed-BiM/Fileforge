@@ -20,11 +20,51 @@ router = APIRouter()
 
 # All supported file extensions
 SUPPORTED_EXTENSIONS = {
-    # Documents
+    # Documents - Modern Office
     ".pdf": {"mime_type": "application/pdf", "category": "Documents", "description": "PDF documents"},
     ".docx": {"mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "category": "Documents", "description": "Microsoft Word documents"},
     ".xlsx": {"mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "category": "Spreadsheets", "description": "Microsoft Excel spreadsheets"},
     ".pptx": {"mime_type": "application/vnd.openxmlformats-officedocument.presentationml.presentation", "category": "Presentations", "description": "Microsoft PowerPoint presentations"},
+    # Documents - Legacy Office (via LibreOffice)
+    ".doc": {"mime_type": "application/msword", "category": "Documents", "description": "Microsoft Word (97-2003)"},
+    ".dot": {"mime_type": "application/msword", "category": "Documents", "description": "Word template"},
+    ".dotm": {"mime_type": "application/vnd.ms-word.template.macroEnabled.12", "category": "Documents", "description": "Word macro-enabled template"},
+    ".dotx": {"mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.template", "category": "Documents", "description": "Word template"},
+    ".rtf": {"mime_type": "application/rtf", "category": "Documents", "description": "Rich Text Format"},
+    ".xls": {"mime_type": "application/vnd.ms-excel", "category": "Spreadsheets", "description": "Microsoft Excel (97-2003)"},
+    ".xlm": {"mime_type": "application/vnd.ms-excel", "category": "Spreadsheets", "description": "Excel macro sheet"},
+    ".xlt": {"mime_type": "application/vnd.ms-excel", "category": "Spreadsheets", "description": "Excel template"},
+    ".ppt": {"mime_type": "application/vnd.ms-powerpoint", "category": "Presentations", "description": "Microsoft PowerPoint (97-2003)"},
+    ".pot": {"mime_type": "application/vnd.ms-powerpoint", "category": "Presentations", "description": "PowerPoint template"},
+    ".pptm": {"mime_type": "application/vnd.ms-powerpoint.presentation.macroEnabled.12", "category": "Presentations", "description": "PowerPoint macro-enabled"},
+    ".pps": {"mime_type": "application/vnd.ms-powerpoint", "category": "Presentations", "description": "PowerPoint slide show"},
+    ".ppsx": {"mime_type": "application/vnd.openxmlformats-officedocument.presentationml.slideshow", "category": "Presentations", "description": "PowerPoint slide show"},
+    # Documents - Open Document Format (via LibreOffice)
+    ".odt": {"mime_type": "application/vnd.oasis.opendocument.text", "category": "Documents", "description": "Open Document Text"},
+    ".ott": {"mime_type": "application/vnd.oasis.opendocument.text-template", "category": "Documents", "description": "Open Document Text Template"},
+    ".ods": {"mime_type": "application/vnd.oasis.opendocument.spreadsheet", "category": "Spreadsheets", "description": "Open Document Spreadsheet"},
+    ".ots": {"mime_type": "application/vnd.oasis.opendocument.spreadsheet-template", "category": "Spreadsheets", "description": "Open Document Spreadsheet Template"},
+    ".odp": {"mime_type": "application/vnd.oasis.opendocument.presentation", "category": "Presentations", "description": "Open Document Presentation"},
+    ".otp": {"mime_type": "application/vnd.oasis.opendocument.presentation-template", "category": "Presentations", "description": "Open Document Presentation Template"},
+    # Documents - Legacy Word Processing (via LibreOffice)
+    ".abw": {"mime_type": "application/x-abiword", "category": "Documents", "description": "AbiWord document"},
+    ".zabw": {"mime_type": "application/x-abiword", "category": "Documents", "description": "AbiWord compressed"},
+    ".hwp": {"mime_type": "application/x-hwp", "category": "Documents", "description": "Hangul Word Processor"},
+    ".sxw": {"mime_type": "application/vnd.sun.xml.writer", "category": "Documents", "description": "StarOffice Writer"},
+    ".sxg": {"mime_type": "application/vnd.sun.xml.writer.global", "category": "Documents", "description": "StarOffice Writer Global"},
+    ".wpd": {"mime_type": "application/vnd.wordperfect", "category": "Documents", "description": "WordPerfect"},
+    ".wps": {"mime_type": "application/vnd.ms-works", "category": "Documents", "description": "Microsoft Works"},
+    ".cwk": {"mime_type": "application/x-appleworks", "category": "Documents", "description": "AppleWorks/ClarisWorks"},
+    ".mcw": {"mime_type": "application/macwriteii", "category": "Documents", "description": "MacWrite"},
+    # Spreadsheets - Legacy (via LibreOffice)
+    ".et": {"mime_type": "application/x-et", "category": "Spreadsheets", "description": "Kingsoft ET"},
+    ".fods": {"mime_type": "application/vnd.oasis.opendocument.spreadsheet-flat-xml", "category": "Spreadsheets", "description": "Flat Open Document Spreadsheet"},
+    ".sxc": {"mime_type": "application/vnd.sun.xml.calc", "category": "Spreadsheets", "description": "StarOffice Calc"},
+    ".wk1": {"mime_type": "application/vnd.lotus-1-2-3", "category": "Spreadsheets", "description": "Lotus 1-2-3"},
+    ".wks": {"mime_type": "application/vnd.lotus-1-2-3", "category": "Spreadsheets", "description": "Lotus 1-2-3 worksheet"},
+    ".dif": {"mime_type": "text/x-dif", "category": "Spreadsheets", "description": "Data Interchange Format"},
+    # Presentations - Legacy (via LibreOffice)
+    ".sxi": {"mime_type": "application/vnd.sun.xml.impress", "category": "Presentations", "description": "StarOffice Impress"},
     # Markup
     ".html": {"mime_type": "text/html", "category": "Markup", "description": "HTML documents"},
     ".htm": {"mime_type": "text/html", "category": "Markup", "description": "HTML documents"},
@@ -33,11 +73,15 @@ SUPPORTED_EXTENSIONS = {
     ".markdown": {"mime_type": "text/markdown", "category": "Markup", "description": "Markdown documents"},
     ".adoc": {"mime_type": "text/asciidoc", "category": "Markup", "description": "AsciiDoc documents"},
     ".asciidoc": {"mime_type": "text/asciidoc", "category": "Markup", "description": "AsciiDoc documents"},
+    ".rst": {"mime_type": "text/x-rst", "category": "Markup", "description": "reStructuredText"},
+    ".org": {"mime_type": "text/x-org", "category": "Markup", "description": "Org-mode"},
     # Data
     ".csv": {"mime_type": "text/csv", "category": "Data", "description": "CSV files"},
+    ".tsv": {"mime_type": "text/tab-separated-values", "category": "Data", "description": "TSV files"},
     ".vtt": {"mime_type": "text/vtt", "category": "Data", "description": "WebVTT subtitle files"},
     ".xml": {"mime_type": "application/xml", "category": "Data", "description": "XML documents"},
     ".json": {"mime_type": "application/json", "category": "Data", "description": "JSON documents"},
+    ".dbf": {"mime_type": "application/x-dbf", "category": "Data", "description": "dBase database file"},
     # Images (OCR supported)
     ".png": {"mime_type": "image/png", "category": "Images", "description": "PNG images (OCR supported)"},
     ".jpg": {"mime_type": "image/jpeg", "category": "Images", "description": "JPEG images (OCR supported)"},
@@ -47,6 +91,14 @@ SUPPORTED_EXTENSIONS = {
     ".bmp": {"mime_type": "image/bmp", "category": "Images", "description": "BMP images (OCR supported)"},
     ".webp": {"mime_type": "image/webp", "category": "Images", "description": "WebP images (OCR supported)"},
     ".gif": {"mime_type": "image/gif", "category": "Images", "description": "GIF images (OCR supported)"},
+    ".heic": {"mime_type": "image/heic", "category": "Images", "description": "HEIC images (OCR supported)"},
+    ".heif": {"mime_type": "image/heif", "category": "Images", "description": "HEIF images (OCR supported)"},
+    # Email
+    ".eml": {"mime_type": "message/rfc822", "category": "Email", "description": "Email message (MIME)"},
+    ".msg": {"mime_type": "application/vnd.ms-outlook", "category": "Email", "description": "Outlook message"},
+    ".p7s": {"mime_type": "application/pkcs7-signature", "category": "Email", "description": "S/MIME signed message"},
+    # Ebooks
+    ".epub": {"mime_type": "application/epub+zip", "category": "Ebooks", "description": "EPUB ebook"},
     # Audio
     ".wav": {"mime_type": "audio/wav", "category": "Audio", "description": "WAV audio files"},
     ".mp3": {"mime_type": "audio/mpeg", "category": "Audio", "description": "MP3 audio files"},

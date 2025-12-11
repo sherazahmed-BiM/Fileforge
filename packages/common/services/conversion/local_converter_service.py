@@ -15,22 +15,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from packages.common.core.config import settings
 from packages.common.core.logging import get_logger
+from packages.common.services.conversion.extractors.universal_extractor import (
+    UniversalExtractor,
+)
 from packages.common.services.conversion.processor import DocumentProcessor
 
 
 logger = get_logger(__name__)
 
-# All supported file extensions
-SUPPORTED_EXTENSIONS = {
-    # Documents
-    ".pdf", ".docx", ".xlsx", ".pptx",
-    # Markup
-    ".html", ".htm", ".xhtml", ".md", ".markdown", ".adoc", ".asciidoc",
-    # Data
-    ".csv",
-    # Images (OCR supported)
-    ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp", ".webp", ".gif",
-}
+# Use UniversalExtractor's extensions as single source of truth
+SUPPORTED_EXTENSIONS = UniversalExtractor.SUPPORTED_EXTENSIONS
 
 
 class LocalConverterService:

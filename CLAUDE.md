@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Tech Stack**:
 - **Backend**: Python 3.11+ monorepo with FastAPI, Celery workers, SQLAlchemy (async), PostgreSQL, Redis
 - **Document Parsing**: Docling (primary, with OCR via EasyOCR and VLM support) with PyMuPDF fallback, tiktoken for token counting
-- **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui, Motion (framer-motion), React Query
+- **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui, Motion (framer-motion), React Query (requires Node.js 20.9+)
 
 ## Quick Start
 
@@ -66,6 +66,12 @@ uv run pytest tests/unit/test_file.py::test_function_name -v
 # Test by category
 make test-unit         # Unit tests only
 make test-integration  # Integration tests only
+```
+
+### Docker (Production)
+```bash
+make docker-build      # Build Docker images (API + Worker)
+make docker-run        # Run with Docker Compose (production config)
 ```
 
 ## Architecture
