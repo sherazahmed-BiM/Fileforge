@@ -14,11 +14,24 @@ const Page = dynamic(
   { ssr: false }
 );
 
-// Dynamically import mammoth for DOCX conversion (only on client)
+// Dynamically import libraries for document conversion (only on client)
 let mammoth: typeof import("mammoth") | null = null;
+let XLSX: typeof import("xlsx") | null = null;
+let Papa: typeof import("papaparse") | null = null;
+let JSZip: typeof import("jszip") | null = null;
+
 if (typeof window !== "undefined") {
   import("mammoth").then((mod) => {
     mammoth = mod;
+  });
+  import("xlsx").then((mod) => {
+    XLSX = mod;
+  });
+  import("papaparse").then((mod) => {
+    Papa = mod;
+  });
+  import("jszip").then((mod) => {
+    JSZip = mod.default;
   });
 }
 
@@ -88,6 +101,23 @@ export function FilePreview({
   const [docxHtml, setDocxHtml] = useState<string | null>(null);
   const [docxLoading, setDocxLoading] = useState<boolean>(false);
   const [docxError, setDocxError] = useState<string | null>(null);
+  
+  // XLSX preview state
+  const [xlsxData, setXlsxData] = useState<{ sheets: Array<{ name: string; data: any[][] }> } | null>(null);
+  const [xlsxLoading, setXlsxLoading] = useState<boolean>(false);
+  const [xlsxError, setXlsxError] = useState<string | null>(null);
+  const [xlsxActiveSheet, setXlsxActiveSheet] = useState<number>(0);
+  
+  // CSV preview state
+  const [csvData, setCsvData] = useState<{ headers: string[]; rows: string[][] } | null>(null);
+  const [csvLoading, setCsvLoading] = useState<boolean>(false);
+  const [csvError, setCsvError] = useState<string | null>(null);
+  
+  // PPTX preview state
+  const [pptxData, setPptxData] = useState<Array<{ slideNumber: number; content: string; images?: string[] }> | null>(null);
+  const [pptxLoading, setPptxLoading] = useState<boolean>(false);
+  const [pptxError, setPptxError] = useState<string | null>(null);
+  const [pptxActiveSlide, setPptxActiveSlide] = useState<number>(0);
 
   // Measure container size on mount and resize
   useEffect(() => {
@@ -185,6 +215,217 @@ export function FilePreview({
     convertDocx();
   }, [fileUrl, fileType]);
 
+  // Convert XLSX when file changes
+  useEffect(() => {
+    const isXlsx = fileType?.toLowerCase() === "xlsx";
+    
+    if (!isXlsx || !fileUrl) {
+      setXlsxData(null);
+      setXlsxError(null);
+      return;
+    }
+
+    const convertXlsx = async () => {
+      if (!XLSX) {
+        const mod = await import("xlsx");
+        XLSX = mod;
+      }
+
+      setXlsxLoading(true);
+      setXlsxError(null);
+      setXlsxData(null);
+
+      try {
+        if (!XLSX) {
+          const mod = await import("xlsx");
+          XLSX = mod;
+        }
+
+        if (!XLSX) {
+          throw new Error("Failed to load XLSX library");
+        }
+
+        const response = await fetch(fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        
+        const workbook = XLSX.read(arrayBuffer, { type: "array" });
+        const sheets = workbook.SheetNames.map((name) => {
+          const worksheet = workbook.Sheets[name];
+          const data = XLSX!.utils.sheet_to_json(worksheet, { header: 1, defval: "" }) as any[][];
+          return { name, data };
+        });
+
+        setXlsxData({ sheets });
+        setXlsxActiveSheet(0);
+      } catch (error) {
+        console.error("Failed to convert XLSX:", error);
+        setXlsxError(error instanceof Error ? error.message : "Failed to load XLSX");
+      } finally {
+        setXlsxLoading(false);
+      }
+    };
+
+    convertXlsx();
+  }, [fileUrl, fileType]);
+
+  // Convert CSV when file changes
+  useEffect(() => {
+    const isCsv = fileType?.toLowerCase() === "csv";
+    
+    if (!isCsv || !fileUrl) {
+      setCsvData(null);
+      setCsvError(null);
+      return;
+    }
+
+    const convertCsv = async () => {
+      if (!Papa) {
+        const mod = await import("papaparse");
+        Papa = mod;
+      }
+
+      setCsvLoading(true);
+      setCsvError(null);
+      setCsvData(null);
+
+      try {
+        const response = await fetch(fileUrl);
+        const text = await response.text();
+        
+        Papa.parse(text, {
+          header: false,
+          skipEmptyLines: true,
+          transform: (value: string) => {
+            // Trim whitespace and handle empty values
+            return value ? value.trim() : "";
+          },
+          complete: (results: any) => {
+            console.log("CSV parse results:", results);
+            if (results.data && Array.isArray(results.data) && results.data.length > 0) {
+              const rows = results.data as string[][];
+              // Filter out completely empty rows
+              const nonEmptyRows = rows.filter(row => 
+                Array.isArray(row) && row.some(cell => cell !== null && cell !== undefined && String(cell).trim() !== "")
+              );
+              
+              console.log("Non-empty rows:", nonEmptyRows);
+              
+              if (nonEmptyRows.length > 0) {
+                // Use first row as headers, rest as data
+                const firstRow = nonEmptyRows[0] || [];
+                const headers = firstRow.map((cell: any) => String(cell || "").trim());
+                const dataRows = nonEmptyRows.slice(1).map(row => 
+                  row.map((cell: any) => String(cell || "").trim())
+                );
+                
+                console.log("CSV headers:", headers);
+                console.log("CSV data rows:", dataRows);
+                
+                setCsvData({ headers, rows: dataRows });
+              } else {
+                console.warn("No non-empty rows found in CSV");
+                setCsvData({ headers: [], rows: [] });
+              }
+            } else {
+              console.warn("No data found in CSV parse results");
+              setCsvData({ headers: [], rows: [] });
+            }
+            setCsvLoading(false);
+          },
+          error: (error: any) => {
+            console.error("Failed to parse CSV:", error);
+            setCsvError(error.message || "Failed to parse CSV");
+            setCsvLoading(false);
+          },
+        });
+      } catch (error) {
+        console.error("Failed to load CSV:", error);
+        setCsvError(error instanceof Error ? error.message : "Failed to load CSV");
+        setCsvLoading(false);
+      }
+    };
+
+    convertCsv();
+  }, [fileUrl, fileType]);
+
+  // Convert PPTX when file changes
+  useEffect(() => {
+    const isPptx = fileType?.toLowerCase() === "pptx";
+    
+    if (!isPptx || !fileUrl) {
+      setPptxData(null);
+      setPptxError(null);
+      return;
+    }
+
+    const convertPptx = async () => {
+      setPptxLoading(true);
+      setPptxError(null);
+      setPptxData(null);
+
+      try {
+        if (!JSZip) {
+          const mod = await import("jszip");
+          JSZip = mod.default;
+        }
+
+        const response = await fetch(fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        
+        // PPTX files are ZIP archives containing XML files
+        // Extract text from the XML structure for preview
+        const zip = await JSZip.loadAsync(arrayBuffer);
+        
+        const slides: Array<{ slideNumber: number; content: string; images?: string[] }> = [];
+        let slideIndex = 1;
+        
+        // Parse slide XML files
+        const slideFiles = Object.keys(zip.files).filter(name => 
+          name.startsWith("ppt/slides/slide") && name.endsWith(".xml")
+        ).sort();
+        
+        for (const filename of slideFiles) {
+          try {
+            const file = zip.files[filename];
+            if (!file) continue;
+            
+            const xmlContent = await file.async("string");
+            // Extract text from XML (simple regex-based extraction for a:t elements)
+            const textMatches = xmlContent.match(/<a:t[^>]*>([^<]*)<\/a:t>/g) || [];
+            const texts = textMatches.map(match => {
+              const textMatch = match.match(/<a:t[^>]*>([^<]*)<\/a:t>/);
+              return textMatch ? textMatch[1] : "";
+            }).filter(t => t.trim());
+            
+            if (texts.length > 0) {
+              slides.push({
+                slideNumber: slideIndex,
+                content: `<div class="space-y-4"><h2 class="text-2xl font-display font-bold mb-4 text-[#1A1A1A]">Slide ${slideIndex}</h2><div class="space-y-2">${texts.map(t => `<p class="text-base font-body text-[#1A1A1A]">${t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`).join("")}</div></div>`,
+              });
+              slideIndex++;
+            }
+          } catch (e) {
+            console.warn(`Failed to parse slide ${filename}:`, e);
+          }
+        }
+        
+        if (slides.length > 0) {
+          setPptxData(slides);
+          setPptxActiveSlide(0);
+        } else {
+          setPptxError("No extractable text content found in PPTX. The file will still be processed.");
+        }
+      } catch (error) {
+        console.error("Failed to convert PPTX:", error);
+        setPptxError(error instanceof Error ? error.message : "Failed to load PPTX. The file will still be processed.");
+      } finally {
+        setPptxLoading(false);
+      }
+    };
+
+    convertPptx();
+  }, [fileUrl, fileType]);
+
   const onDocumentLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
     pageRefs.current = new Array(numPages).fill(null);
@@ -244,6 +485,9 @@ export function FilePreview({
     fileType?.toLowerCase() || ""
   );
   const isDocx = fileType?.toLowerCase() === "docx";
+  const isXlsx = fileType?.toLowerCase() === "xlsx";
+  const isCsv = fileType?.toLowerCase() === "csv";
+  const isPptx = fileType?.toLowerCase() === "pptx";
 
   return (
     <div className="flex-1 flex flex-col bg-[#F5F2ED] min-w-0 h-full overflow-hidden">
@@ -399,6 +643,244 @@ export function FilePreview({
                       }}
                     />
                   ) : null}
+                </div>
+              ) : isXlsx ? (
+                <div className="w-full max-w-6xl bg-white neo-border rounded-2xl p-6 my-8 neo-shadow">
+                  {xlsxLoading ? (
+                    <div className="flex items-center justify-center min-h-[400px]">
+                      <div className="text-center">
+                        <LoadingSpinner className="w-10 h-10 text-[#C4705A] mx-auto mb-3" />
+                        <p className="text-sm font-body text-[#6B6B6B]">Loading XLSX...</p>
+                      </div>
+                    </div>
+                  ) : xlsxError ? (
+                    <div className="flex items-center justify-center min-h-[400px]">
+                      <div className="text-center">
+                        <div className="w-16 h-16 rounded-2xl bg-[#FEF2F2] neo-border flex items-center justify-center mx-auto mb-4">
+                          <FileIcon className="w-8 h-8 text-[#B54A4A]" />
+                        </div>
+                        <p className="font-display font-bold text-[#1A1A1A]">Failed to load XLSX</p>
+                        <p className="text-sm font-body text-[#6B6B6B] mt-1">{xlsxError}</p>
+                      </div>
+                    </div>
+                  ) : xlsxData && xlsxData.sheets.length > 0 ? (
+                    <div>
+                      {/* Sheet selector */}
+                      {xlsxData.sheets.length > 1 && (
+                        <div className="mb-4 flex gap-2 flex-wrap">
+                          {xlsxData.sheets.map((sheet, index) => (
+                            <button
+                              key={index}
+                              onClick={() => setXlsxActiveSheet(index)}
+                              className={`px-4 py-2 rounded-lg neo-border text-sm font-display font-semibold transition-colors ${
+                                xlsxActiveSheet === index
+                                  ? "bg-[#C4705A] text-white"
+                                  : "bg-white text-[#1A1A1A] hover:bg-[#F5F2ED]"
+                              }`}
+                            >
+                              {sheet.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {/* Table */}
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse neo-border">
+                          {xlsxData.sheets[xlsxActiveSheet].data.length > 0 && (
+                            <>
+                              <thead>
+                                <tr>
+                                  {xlsxData.sheets[xlsxActiveSheet].data[0].map((cell, cellIndex) => {
+                                    const cellValue = cell !== null && cell !== undefined ? String(cell) : "";
+                                    return (
+                                      <th
+                                        key={cellIndex}
+                                        className="neo-border p-3 text-sm bg-[#F5F2ED] font-display font-bold text-left text-[#1A1A1A]"
+                                      >
+                                        {cellValue}
+                                      </th>
+                                    );
+                                  })}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {xlsxData.sheets[xlsxActiveSheet].data.slice(1).map((row, rowIndex) => (
+                                  <tr key={rowIndex}>
+                                    {row.map((cell, cellIndex) => {
+                                      const cellValue = cell !== null && cell !== undefined ? String(cell) : "";
+                                      return (
+                                        <td
+                                          key={cellIndex}
+                                          className="neo-border p-3 text-sm bg-white font-body text-[#1A1A1A]"
+                                        >
+                                          {cellValue}
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </>
+                          )}
+                        </table>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : isCsv ? (
+                <div className="w-full max-w-6xl bg-white neo-border rounded-2xl p-6 my-8 neo-shadow">
+                  {csvLoading ? (
+                    <div className="flex items-center justify-center min-h-[400px]">
+                      <div className="text-center">
+                        <LoadingSpinner className="w-10 h-10 text-[#C4705A] mx-auto mb-3" />
+                        <p className="text-sm font-body text-[#6B6B6B]">Loading CSV...</p>
+                      </div>
+                    </div>
+                  ) : csvError ? (
+                    <div className="flex items-center justify-center min-h-[400px]">
+                      <div className="text-center">
+                        <div className="w-16 h-16 rounded-2xl bg-[#FEF2F2] neo-border flex items-center justify-center mx-auto mb-4">
+                          <FileIcon className="w-8 h-8 text-[#B54A4A]" />
+                        </div>
+                        <p className="font-display font-bold text-[#1A1A1A]">Failed to load CSV</p>
+                        <p className="text-sm font-body text-[#6B6B6B] mt-1">{csvError}</p>
+                      </div>
+                    </div>
+                  ) : csvData ? (
+                    <div className="overflow-x-auto">
+                      {csvData.headers.length === 0 && csvData.rows.length === 0 ? (
+                        <div className="text-center py-8">
+                          <p className="text-sm font-body text-[#6B6B6B]">No data found in CSV file</p>
+                        </div>
+                      ) : (
+                        <table className="w-full border-collapse neo-border">
+                          {csvData.headers.length > 0 && (
+                            <thead>
+                              <tr>
+                                {csvData.headers.map((header, index) => (
+                                  <th
+                                    key={index}
+                                    className="neo-border p-3 text-sm bg-[#F5F2ED] font-display font-bold text-left"
+                                  >
+                                    {header || `Column ${index + 1}`}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                          )}
+                          <tbody>
+                            {csvData.rows.length > 0 ? (
+                              csvData.rows.map((row, rowIndex) => (
+                                <tr key={rowIndex}>
+                                  {row.map((cell, cellIndex) => (
+                                    <td
+                                      key={cellIndex}
+                                      className="neo-border p-3 text-sm bg-white font-body"
+                                    >
+                                      {cell || ""}
+                                    </td>
+                                  ))}
+                                  {/* Fill empty cells if row is shorter than headers */}
+                                  {csvData.headers.length > row.length &&
+                                    Array.from({ length: csvData.headers.length - row.length }).map((_, index) => (
+                                      <td
+                                        key={`empty-${index}`}
+                                        className="neo-border p-3 text-sm bg-white font-body"
+                                      >
+                                        {""}
+                                      </td>
+                                    ))}
+                                </tr>
+                              ))
+                            ) : csvData.headers.length > 0 ? (
+                              <tr>
+                                <td
+                                  colSpan={csvData.headers.length}
+                                  className="neo-border p-3 text-sm bg-white font-body text-center text-[#6B6B6B]"
+                                >
+                                  No data rows found
+                                </td>
+                              </tr>
+                            ) : null}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              ) : isPptx ? (
+                <div className="w-full max-w-4xl bg-white neo-border rounded-2xl p-8 my-8 neo-shadow">
+                  {pptxLoading ? (
+                    <div className="flex items-center justify-center min-h-[400px]">
+                      <div className="text-center">
+                        <LoadingSpinner className="w-10 h-10 text-[#C4705A] mx-auto mb-3" />
+                        <p className="text-sm font-body text-[#6B6B6B]">Loading PPTX...</p>
+                      </div>
+                    </div>
+                  ) : pptxError ? (
+                    <div className="flex items-center justify-center min-h-[400px]">
+                      <div className="text-center">
+                        <div className="w-16 h-16 rounded-2xl bg-[#FEF2F2] neo-border flex items-center justify-center mx-auto mb-4">
+                          <FileIcon className="w-8 h-8 text-[#B54A4A]" />
+                        </div>
+                        <p className="font-display font-bold text-[#1A1A1A]">PPTX Preview</p>
+                        <p className="text-sm font-body text-[#6B6B6B] mt-1">{pptxError}</p>
+                        <p className="text-xs font-body text-[#6B6B6B] mt-2">
+                          The file will still be processed and extracted text will be available
+                        </p>
+                      </div>
+                    </div>
+                  ) : pptxData && pptxData.length > 0 ? (
+                    <div>
+                      {/* Slide navigation */}
+                      {pptxData.length > 1 && (
+                        <div className="mb-4 flex items-center justify-between">
+                          <button
+                            onClick={() => setPptxActiveSlide(Math.max(0, pptxActiveSlide - 1))}
+                            disabled={pptxActiveSlide === 0}
+                            className={`px-4 py-2 rounded-lg neo-border text-sm font-display font-semibold ${
+                              pptxActiveSlide === 0
+                                ? "bg-[#EDEAE4] text-[#A0A0A0] cursor-not-allowed"
+                                : "bg-white text-[#1A1A1A] hover:bg-[#F5F2ED]"
+                            }`}
+                          >
+                            Previous
+                          </button>
+                          <span className="text-sm font-body text-[#6B6B6B]">
+                            Slide {pptxActiveSlide + 1} of {pptxData.length}
+                          </span>
+                          <button
+                            onClick={() => setPptxActiveSlide(Math.min(pptxData.length - 1, pptxActiveSlide + 1))}
+                            disabled={pptxActiveSlide === pptxData.length - 1}
+                            className={`px-4 py-2 rounded-lg neo-border text-sm font-display font-semibold ${
+                              pptxActiveSlide === pptxData.length - 1
+                                ? "bg-[#EDEAE4] text-[#A0A0A0] cursor-not-allowed"
+                                : "bg-white text-[#1A1A1A] hover:bg-[#F5F2ED]"
+                            }`}
+                          >
+                            Next
+                          </button>
+                        </div>
+                      )}
+                      {/* Slide content */}
+                      <div className="min-h-[400px] p-6 bg-[#FAF8F5] rounded-lg neo-border">
+                        <div className="prose max-w-none">
+                          {pptxData[pptxActiveSlide]?.content && (
+                            <div dangerouslySetInnerHTML={{ __html: pptxData[pptxActiveSlide].content }} />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center min-h-[400px]">
+                      <div className="text-center">
+                        <p className="font-display font-bold text-[#1A1A1A]">PPTX Preview</p>
+                        <p className="text-sm font-body text-[#6B6B6B] mt-1">
+                          Preview is being processed. The file will still be extracted.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex-1 flex items-center justify-center h-full">

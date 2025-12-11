@@ -769,3 +769,75 @@
 .docx-preview a:hover {
   color: #A65D4A;
 }
+
+/* ========================================
+   XLSX/CSV TABLE PREVIEW STYLES
+   ======================================== */
+
+/* Table styling for spreadsheet previews */
+table.neo-border {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+table.neo-border th,
+table.neo-border td {
+  border-right: 2.5px solid #2C2C2C;
+  border-bottom: 2.5px solid #2C2C2C;
+  min-width: 100px;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+table.neo-border th:last-child,
+table.neo-border td:last-child {
+  border-right: none;
+}
+
+table.neo-border tr:last-child th,
+table.neo-border tr:last-child td {
+  border-bottom: none;
+}
+
+table.neo-border th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: #F5F2ED !important;
+  color: #1A1A1A !important;
+}
+
+table.neo-border td {
+  color: #1A1A1A !important;
+}
+
+table.neo-border tbody tr:hover {
+  background-color: #FAF8F5;
+}
+
+/* Scrollable table container */
+.overflow-x-auto {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.overflow-x-auto::-webkit-scrollbar {
+  height: 8px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: #EDEAE4;
+  border-radius: 4px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: #6B6B6B;
+  border-radius: 4px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: #2C2C2C;
+}
