@@ -11,6 +11,7 @@ to the appropriate extraction method. This includes:
 5. Data formats: DBF, DIF, TSV
 6. Markup formats: RST, ORG
 7. Additional image formats: HEIC
+8. Audio formats (via Docling ASR/Whisper): MP3, WAV, M4A, FLAC, OGG, WEBM
 
 The extractor automatically detects the file type and uses the best extraction
 method for optimal results.
@@ -53,12 +54,14 @@ _msg_parser_available = False
 _dbfread_available = False
 _pypandoc_available = False
 _pillow_heif_available = False
+_docling_asr_available = False
 
 
 def _lazy_load_dependencies():
     """Lazy load optional dependencies."""
     global _docling_extractor, _ebooklib_available, _msg_parser_available
     global _dbfread_available, _pypandoc_available, _pillow_heif_available
+    global _docling_asr_available
 
     # Docling
     if _docling_extractor is None:
@@ -105,6 +108,14 @@ def _lazy_load_dependencies():
     except ImportError:
         pass
 
+    # Docling ASR for audio transcription
+    try:
+        from docling.datamodel.base_models import InputFormat  # noqa: F401
+        from docling.pipeline.asr_pipeline import AsrPipeline  # noqa: F401
+        _docling_asr_available = True
+    except ImportError:
+        pass
+
 
 class UniversalExtractor(BaseExtractor):
     """
@@ -147,6 +158,8 @@ class UniversalExtractor(BaseExtractor):
         ".dbf", ".tsv",
         # Markup
         ".rst", ".org",
+        # Audio (Docling ASR/Whisper)
+        ".mp3", ".wav", ".m4a", ".flac", ".ogg", ".webm",
     }
 
     def __init__(
@@ -225,6 +238,9 @@ class UniversalExtractor(BaseExtractor):
 
         elif ext in {".heic", ".heif"}:
             return self._extract_heic(file_path)
+
+        elif ext in {".mp3", ".wav", ".m4a", ".flac", ".ogg", ".webm"}:
+            return self._extract_audio(file_path, **options)
 
         elif is_libreoffice_convertible(file_path):
             return self._extract_via_libreoffice(file_path, **options)
@@ -1051,6 +1067,115 @@ Date: {headers['date']}
             extraction_method="pillow_heif",
             warnings=warnings,
         )
+
+    def _extract_audio(self, file_path: Path, **options: Any) -> ExtractionResult:
+        """
+        Extract content from audio files using Docling's ASR (Whisper) pipeline.
+
+        Supports: MP3, WAV, M4A, FLAC, OGG, WEBM
+        """
+        metadata: dict[str, Any] = {"format": file_path.suffix.lower()[1:]}
+        warnings: list[str] = []
+
+        if not _docling_asr_available:
+            warnings.append(
+                "Docling ASR not available. Install with: pip install docling[asr]. "
+                "Also requires ffmpeg: sudo apt install ffmpeg"
+            )
+            return ExtractionResult(
+                elements=[],
+                metadata=metadata,
+                raw_text="",
+                page_count=0,
+                word_count=0,
+                extraction_method="audio_fallback",
+                warnings=warnings,
+            )
+
+        try:
+            from docling.datamodel import asr_model_specs
+            from docling.datamodel.base_models import InputFormat
+            from docling.datamodel.pipeline_options import AcceleratorOptions, AsrPipelineOptions
+            from docling.document_converter import AudioFormatOption, DocumentConverter
+            from docling.pipeline.asr_pipeline import AsrPipeline
+
+            # Configure ASR pipeline with Whisper BASE model (good balance of speed/accuracy)
+            # Available models: WHISPER_TINY, WHISPER_BASE, WHISPER_SMALL, WHISPER_TURBO
+            whisper_model = options.get("whisper_model", "base")
+            model_map = {
+                "tiny": asr_model_specs.WHISPER_TINY,
+                "base": asr_model_specs.WHISPER_BASE,
+                "small": asr_model_specs.WHISPER_SMALL,
+            }
+
+            # Check for turbo model
+            if whisper_model == "turbo" and hasattr(asr_model_specs, "WHISPER_TURBO"):
+                asr_options = asr_model_specs.WHISPER_TURBO
+            else:
+                asr_options = model_map.get(whisper_model, asr_model_specs.WHISPER_BASE)
+
+            # Force CPU to avoid CUDA NaN issues, and set language to English
+            accelerator_options = AcceleratorOptions(device="cpu")
+            pipeline_options = AsrPipelineOptions(
+                asr_options=asr_options,
+                accelerator_options=accelerator_options,
+            )
+
+            logger.info(f"Transcribing audio with Whisper ({whisper_model}) on CPU: {file_path.name}")
+
+            converter = DocumentConverter(
+                format_options={
+                    InputFormat.AUDIO: AudioFormatOption(
+                        pipeline_cls=AsrPipeline,
+                        pipeline_options=pipeline_options,
+                    )
+                }
+            )
+
+            # Convert/transcribe audio
+            result = converter.convert(str(file_path))
+
+            # Extract transcription
+            transcription = result.document.export_to_markdown()
+
+            # Get duration if available
+            if hasattr(result.document, "metadata"):
+                doc_metadata = result.document.metadata or {}
+                if "duration" in doc_metadata:
+                    metadata["duration_seconds"] = doc_metadata["duration"]
+
+            metadata["whisper_model"] = whisper_model
+            metadata["transcription_method"] = "docling_asr"
+
+            elements = [
+                ExtractedElement(
+                    element_type=ElementType.TEXT,
+                    content=transcription,
+                    page_number=1,
+                    metadata={"type": "audio_transcription"},
+                )
+            ]
+
+            word_count = len(transcription.split())
+
+            logger.info(f"Audio transcription complete: {word_count} words")
+
+            return ExtractionResult(
+                elements=elements,
+                metadata=metadata,
+                raw_text=transcription,
+                page_count=1,
+                word_count=word_count,
+                extraction_method="docling_asr_whisper",
+                warnings=warnings,
+            )
+
+        except Exception as e:
+            logger.error(f"Audio transcription failed: {e}")
+            raise RuntimeError(
+                f"Audio transcription failed: {e}. "
+                "Make sure ffmpeg is installed: sudo apt install ffmpeg"
+            )
 
     def _detect_column_type(self, values: list[Any]) -> str:
         """Detect the data type for a column based on sample values."""

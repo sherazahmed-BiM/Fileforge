@@ -71,26 +71,51 @@ function ArrowRightIcon({ className }: { className?: string }) {
   );
 }
 
-// Supported file types matching backend (Docling)
+// Supported file types matching backend (UniversalExtractor)
 const ACCEPTED_EXTENSIONS = [
-  // Documents
+  // Documents - Modern Office
   ".pdf", ".docx", ".xlsx", ".pptx",
+  // Documents - Legacy Office (via LibreOffice)
+  ".doc", ".dot", ".dotm", ".dotx", ".rtf",
+  ".xls", ".xlm", ".xlt",
+  ".ppt", ".pot", ".pptm", ".pps", ".ppsx",
+  // Documents - Open Document Format (via LibreOffice)
+  ".odt", ".ott", ".ods", ".ots", ".odp", ".otp",
+  // Documents - Legacy Word Processing (via LibreOffice)
+  ".abw", ".zabw", ".hwp", ".sxw", ".sxg", ".wpd", ".wps", ".cwk", ".mcw",
+  // Spreadsheets - Legacy (via LibreOffice)
+  ".et", ".fods", ".sxc", ".wk1", ".wks", ".dif",
+  // Presentations - Legacy (via LibreOffice)
+  ".sxi",
   // Markup
-  ".html", ".htm", ".xhtml", ".md", ".markdown", ".adoc", ".asciidoc",
+  ".html", ".htm", ".xhtml", ".md", ".markdown", ".adoc", ".asciidoc", ".rst", ".org",
   // Data
-  ".csv", ".vtt", ".json", ".xml",
+  ".csv", ".tsv", ".json", ".xml", ".dbf",
   // Images (OCR supported)
-  ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".tif", ".webp",
-  // Audio
-  ".wav", ".mp3"
+  ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".tif", ".webp", ".heic", ".heif",
+  // Email
+  ".eml", ".msg", ".p7s",
+  // Ebooks
+  ".epub",
+  // Audio (transcription via Whisper ASR)
+  ".mp3", ".wav", ".m4a", ".flac", ".ogg", ".webm"
 ];
 
 const ACCEPTED_MIME_TYPES = [
-  // Documents
+  // Documents - Modern Office
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  // Documents - Legacy Office
+  "application/msword",
+  "application/rtf",
+  "application/vnd.ms-excel",
+  "application/vnd.ms-powerpoint",
+  // Documents - Open Document Format
+  "application/vnd.oasis.opendocument.text",
+  "application/vnd.oasis.opendocument.spreadsheet",
+  "application/vnd.oasis.opendocument.presentation",
   // Markup
   "text/html",
   "application/xhtml+xml",
@@ -98,7 +123,7 @@ const ACCEPTED_MIME_TYPES = [
   "text/asciidoc",
   // Data
   "text/csv",
-  "text/vtt",
+  "text/tab-separated-values",
   "application/json",
   "application/xml",
   // Images
@@ -108,9 +133,20 @@ const ACCEPTED_MIME_TYPES = [
   "image/bmp",
   "image/tiff",
   "image/webp",
-  // Audio
+  "image/heic",
+  "image/heif",
+  // Email
+  "message/rfc822",
+  "application/vnd.ms-outlook",
+  // Ebooks
+  "application/epub+zip",
+  // Audio (transcription via Whisper ASR)
+  "audio/mpeg",
   "audio/wav",
-  "audio/mpeg"
+  "audio/mp4",
+  "audio/flac",
+  "audio/ogg",
+  "audio/webm"
 ];
 
 interface UploadedFile {
@@ -436,7 +472,7 @@ export default function UploadPage() {
           <div className="mt-8 text-center">
             <p className="text-sm font-body text-[#6B6B6B] mb-3">Supported formats</p>
             <div className="flex flex-wrap justify-center gap-2">
-              {["PDF", "DOCX", "XLSX", "PPTX", "TXT", "HTML", "CSV", "JSON", "PNG", "JPG"].map((format) => (
+              {["PDF", "DOCX", "DOC", "XLSX", "XLS", "PPTX", "PPT", "ODT", "ODS", "HTML", "CSV", "EML", "EPUB", "PNG", "JPG"].map((format) => (
                 <span
                   key={format}
                   className="px-3 py-1.5 text-xs font-display font-semibold bg-[#F5F2ED] border-[2px] border-[#EDEAE4] rounded-lg text-[#6B6B6B]"

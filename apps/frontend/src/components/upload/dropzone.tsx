@@ -9,22 +9,59 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
 
-// Supported file types matching backend (Docling)
+// Supported file types matching backend (UniversalExtractor)
 const ACCEPTED_FILE_TYPES = {
-  // Documents
+  // Documents - Modern Office
   "application/pdf": [".pdf"],
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
   "application/vnd.openxmlformats-officedocument.presentationml.presentation": [".pptx"],
+  // Documents - Legacy Office (via LibreOffice)
+  "application/msword": [".doc", ".dot"],
+  "application/vnd.ms-word.template.macroEnabled.12": [".dotm"],
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.template": [".dotx"],
+  "application/rtf": [".rtf"],
+  "application/vnd.ms-excel": [".xls", ".xlm", ".xlt"],
+  "application/vnd.ms-powerpoint": [".ppt", ".pot", ".pps"],
+  "application/vnd.ms-powerpoint.presentation.macroEnabled.12": [".pptm"],
+  "application/vnd.openxmlformats-officedocument.presentationml.slideshow": [".ppsx"],
+  // Documents - Open Document Format (via LibreOffice)
+  "application/vnd.oasis.opendocument.text": [".odt"],
+  "application/vnd.oasis.opendocument.text-template": [".ott"],
+  "application/vnd.oasis.opendocument.spreadsheet": [".ods"],
+  "application/vnd.oasis.opendocument.spreadsheet-template": [".ots"],
+  "application/vnd.oasis.opendocument.presentation": [".odp"],
+  "application/vnd.oasis.opendocument.presentation-template": [".otp"],
+  // Documents - Legacy Word Processing (via LibreOffice)
+  "application/x-abiword": [".abw", ".zabw"],
+  "application/x-hwp": [".hwp"],
+  "application/vnd.sun.xml.writer": [".sxw"],
+  "application/vnd.sun.xml.writer.global": [".sxg"],
+  "application/vnd.wordperfect": [".wpd"],
+  "application/vnd.ms-works": [".wps"],
+  "application/x-appleworks": [".cwk"],
+  "application/macwriteii": [".mcw"],
+  // Spreadsheets - Legacy (via LibreOffice)
+  "application/x-et": [".et"],
+  "application/vnd.oasis.opendocument.spreadsheet-flat-xml": [".fods"],
+  "application/vnd.sun.xml.calc": [".sxc"],
+  "application/vnd.lotus-1-2-3": [".wk1", ".wks"],
+  "text/x-dif": [".dif"],
+  // Presentations - Legacy (via LibreOffice)
+  "application/vnd.sun.xml.impress": [".sxi"],
   // Markup
   "text/html": [".html", ".htm", ".xhtml"],
   "text/markdown": [".md", ".markdown"],
   "text/asciidoc": [".adoc", ".asciidoc"],
+  "text/x-rst": [".rst"],
+  "text/x-org": [".org"],
   // Data
   "text/csv": [".csv"],
+  "text/tab-separated-values": [".tsv"],
   "text/vtt": [".vtt"],
   "application/json": [".json"],
   "application/xml": [".xml"],
+  "application/x-dbf": [".dbf"],
   // Images (OCR supported)
   "image/png": [".png"],
   "image/jpeg": [".jpg", ".jpeg"],
@@ -32,9 +69,21 @@ const ACCEPTED_FILE_TYPES = {
   "image/bmp": [".bmp"],
   "image/tiff": [".tiff", ".tif"],
   "image/webp": [".webp"],
-  // Audio
-  "audio/wav": [".wav"],
+  "image/heic": [".heic"],
+  "image/heif": [".heif"],
+  // Email
+  "message/rfc822": [".eml"],
+  "application/vnd.ms-outlook": [".msg"],
+  "application/pkcs7-signature": [".p7s"],
+  // Ebooks
+  "application/epub+zip": [".epub"],
+  // Audio (transcription via Whisper ASR)
   "audio/mpeg": [".mp3"],
+  "audio/wav": [".wav"],
+  "audio/mp4": [".m4a"],
+  "audio/flac": [".flac"],
+  "audio/ogg": [".ogg"],
+  "audio/webm": [".webm"],
 };
 
 interface FileWithProgress {

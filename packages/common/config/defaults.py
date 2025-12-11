@@ -78,6 +78,8 @@ class ApplicationDefaults:
         ".eml", ".msg", ".p7s",
         # Ebooks
         ".epub",
+        # Audio (transcription via Whisper ASR)
+        ".mp3", ".wav", ".m4a", ".flac", ".ogg", ".webm",
     ]
 
     # ==================== Chunking ====================

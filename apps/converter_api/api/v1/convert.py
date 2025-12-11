@@ -99,9 +99,13 @@ SUPPORTED_EXTENSIONS = {
     ".p7s": {"mime_type": "application/pkcs7-signature", "category": "Email", "description": "S/MIME signed message"},
     # Ebooks
     ".epub": {"mime_type": "application/epub+zip", "category": "Ebooks", "description": "EPUB ebook"},
-    # Audio
-    ".wav": {"mime_type": "audio/wav", "category": "Audio", "description": "WAV audio files"},
-    ".mp3": {"mime_type": "audio/mpeg", "category": "Audio", "description": "MP3 audio files"},
+    # Audio (transcription via Whisper ASR)
+    ".mp3": {"mime_type": "audio/mpeg", "category": "Audio", "description": "MP3 audio (transcription)"},
+    ".wav": {"mime_type": "audio/wav", "category": "Audio", "description": "WAV audio (transcription)"},
+    ".m4a": {"mime_type": "audio/mp4", "category": "Audio", "description": "M4A audio (transcription)"},
+    ".flac": {"mime_type": "audio/flac", "category": "Audio", "description": "FLAC audio (transcription)"},
+    ".ogg": {"mime_type": "audio/ogg", "category": "Audio", "description": "OGG audio (transcription)"},
+    ".webm": {"mime_type": "audio/webm", "category": "Audio", "description": "WebM audio (transcription)"},
 }
 
 

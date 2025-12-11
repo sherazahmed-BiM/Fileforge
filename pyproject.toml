@@ -53,7 +53,7 @@ dependencies = [
     # OCR extras: easyocr, tesserocr, rapidocr, ocrmac
     # NOTE: VLM support removed to avoid GPU/CUDA dependencies
     # VLM can be re-enabled with docling[vlm] if GPU is available
-    "docling[easyocr]>=2.64.0",  # Docling with EasyOCR (CPU-only)
+    "docling[easyocr,asr]>=2.64.0",  # Docling with EasyOCR (CPU-only) + ASR for audio
     # Additional format support
     "ebooklib>=0.18",            # EPUB ebook parsing
     "msg-parser>=1.2.0",         # Outlook MSG email files

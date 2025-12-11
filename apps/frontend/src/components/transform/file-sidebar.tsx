@@ -93,7 +93,7 @@ export function FileSidebar({
           ref={fileInputRef}
           type="file"
           className="hidden"
-          accept=".pdf,.docx,.xlsx,.pptx,.html,.htm,.xhtml,.md,.markdown,.adoc,.asciidoc,.csv,.vtt,.json,.xml,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.tif,.webp,.wav,.mp3"
+          accept=".pdf,.docx,.xlsx,.pptx,.doc,.dot,.dotm,.dotx,.rtf,.xls,.xlm,.xlt,.ppt,.pot,.pptm,.pps,.ppsx,.odt,.ott,.ods,.ots,.odp,.otp,.abw,.zabw,.hwp,.sxw,.sxg,.wpd,.wps,.cwk,.mcw,.et,.fods,.sxc,.wk1,.wks,.dif,.sxi,.html,.htm,.xhtml,.md,.markdown,.adoc,.asciidoc,.rst,.org,.csv,.tsv,.json,.xml,.dbf,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.tif,.webp,.heic,.heif,.eml,.msg,.p7s,.epub,.mp3,.wav,.m4a,.flac,.ogg,.webm"
           multiple
           onChange={handleFileInput}
         />
