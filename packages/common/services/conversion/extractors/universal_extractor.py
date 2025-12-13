@@ -48,6 +48,7 @@ logger = get_logger(__name__)
 
 # Try to import optional dependencies
 _docling_extractor = None
+_pdf_extractor = None
 _ebooklib_available = False
 _msg_parser_available = False
 _dbfread_available = False
@@ -57,7 +58,7 @@ _pillow_heif_available = False
 
 def _lazy_load_dependencies():
     """Lazy load optional dependencies."""
-    global _docling_extractor, _ebooklib_available, _msg_parser_available
+    global _docling_extractor, _pdf_extractor, _ebooklib_available, _msg_parser_available
     global _dbfread_available, _pypandoc_available, _pillow_heif_available
 
     # Docling
@@ -69,6 +70,16 @@ def _lazy_load_dependencies():
             _docling_extractor = DoclingExtractor
         except ImportError:
             logger.warning("Docling not available")
+
+    # PyMuPDF PDF Extractor (fallback)
+    if _pdf_extractor is None:
+        try:
+            from packages.common.services.conversion.extractors.pdf_extractor import (
+                PDFExtractor,
+            )
+            _pdf_extractor = PDFExtractor
+        except ImportError:
+            logger.warning("PDFExtractor not available")
 
     # EbookLib for EPUB
     try:
@@ -181,6 +192,14 @@ class UniversalExtractor(BaseExtractor):
             except Exception as e:
                 logger.warning(f"Failed to initialize Docling: {e}")
 
+        # Initialize PDF extractor as fallback
+        self._pdf_extractor: Any | None = None
+        if _pdf_extractor:
+            try:
+                self._pdf_extractor = _pdf_extractor()
+            except Exception as e:
+                logger.warning(f"Failed to initialize PDFExtractor: {e}")
+
     def extract(
         self,
         file_path: str | Path,
@@ -231,6 +250,11 @@ class UniversalExtractor(BaseExtractor):
 
         elif self._docling and ext in self._docling.SUPPORTED_EXTENSIONS:
             return self._docling.extract(file_path, **options)
+
+        elif ext == ".pdf" and self._pdf_extractor:
+            # Fallback to PyMuPDF for PDFs when Docling is not available
+            logger.info("Using PyMuPDF fallback for PDF extraction")
+            return self._pdf_extractor.extract(file_path, **options)
 
         else:
             raise ValueError(
