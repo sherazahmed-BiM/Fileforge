@@ -474,7 +474,7 @@ export default function LandingPage() {
                 <ArrowRightIcon className="w-4 h-4" />
               </button>
               <button
-                onClick={() => router.push("/upload")}
+                onClick={() => router.push("/dashboard")}
                 className="px-5 py-2.5 text-sm font-display font-semibold bg-[#C4705A] text-white rounded-xl border-[2.5px] border-[#2C2C2C] hover:bg-[#B5614B] transition-colors cursor-pointer"
               >
                 Try for Free
@@ -522,7 +522,7 @@ export default function LandingPage() {
               {/* CTAs */}
               <div className="flex flex-wrap items-center gap-4">
                 <button
-                  onClick={() => router.push("/upload")}
+                  onClick={() => router.push("/dashboard")}
                   className="neo-btn bg-[#C4705A] text-white px-8 py-4 text-base font-display font-semibold flex items-center gap-2 cursor-pointer"
                 >
                   Start Converting
@@ -1115,7 +1115,7 @@ export default function LandingPage() {
                 </div>
 
                 <button
-                  onClick={() => router.push("/upload")}
+                  onClick={() => router.push("/dashboard")}
                   className={`w-full py-3.5 rounded-xl text-sm font-display font-semibold transition-all cursor-pointer ${
                     plan.highlighted
                       ? "neo-btn bg-[#C4705A] text-white"
@@ -1179,7 +1179,7 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4">
             <button
-              onClick={() => router.push("/upload")}
+              onClick={() => router.push("/dashboard")}
               className="px-8 py-4 bg-[#C4705A] text-white rounded-xl border-[2.5px] border-[#C4705A] text-base font-display font-semibold flex items-center gap-2 hover:bg-[#B5614B] transition-colors cursor-pointer"
             >
               Try for Free

@@ -221,7 +221,7 @@ export default function DocumentsPage() {
                 </p>
               </div>
               <Link
-                href="/upload"
+                href="/dashboard"
                 className="inline-flex items-center gap-2 px-5 py-3 bg-[#C4705A] text-white font-body font-semibold rounded-xl border-[2.5px] border-[#2C2C2C] neo-shadow-sm hover:translate-y-[2px] hover:shadow-none transition-all"
               >
                 <PlusIcon className="w-5 h-5" />
@@ -317,7 +317,7 @@ export default function DocumentsPage() {
                   </p>
                   {!searchQuery && (
                     <Link
-                      href="/upload"
+                      href="/dashboard"
                       className="mt-6 inline-flex items-center gap-2 px-6 py-3 bg-[#4A6B5A] text-white font-body font-semibold rounded-xl border-[2.5px] border-[#2C2C2C] neo-shadow-sm hover:translate-y-[2px] hover:shadow-none transition-all"
                     >
                       <PlusIcon className="w-5 h-5" />
