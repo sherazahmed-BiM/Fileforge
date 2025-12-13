@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DocumentsList } from "@/components/documents";
 import { useDocuments, useDeleteDocument } from "@/hooks/use-documents";
 import { reprocessDocument } from "@/lib/api";
+import { ProtectedRoute } from "@/components/auth/protected-route";
+import { useAuth } from "@/contexts/auth-context";
 
 // Custom SVG Icons
 function FileIcon({ className }: { className?: string }) {
@@ -34,10 +37,31 @@ function PlusIcon({ className }: { className?: string }) {
   );
 }
 
+function LogoutIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+      <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" strokeLinecap="round" strokeLinejoin="round" />
+      <polyline points="16,17 21,12 16,7" strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="21" y1="12" x2="9" y2="12" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export default function DocumentsPage() {
   const router = useRouter();
+  const { user, logout } = useAuth();
   const { data, isLoading } = useDocuments();
   const deleteMutation = useDeleteDocument();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   const handleDelete = (id: number) => {
     if (confirm("Are you sure you want to delete this document?")) {
@@ -54,6 +78,7 @@ export default function DocumentsPage() {
   };
 
   return (
+    <ProtectedRoute>
     <div className="min-h-screen bg-[#FFFBF5] flex flex-col relative">
       {/* Background grid */}
       <div className="absolute inset-0 grid-bg pointer-events-none" />
@@ -76,13 +101,28 @@ export default function DocumentsPage() {
             </div>
           </div>
           <nav className="flex items-center gap-4">
+            {user && (
+              <span className="text-sm font-body text-[#6B6B6B]">
+                {user.email}
+              </span>
+            )}
             <Link
-              href="/transform"
+              href="/upload"
               className="neo-btn px-5 py-2.5 bg-[#E91E8C] text-white font-bold rounded-xl flex items-center gap-2"
             >
               <PlusIcon className="h-4 w-4" />
               Upload New
             </Link>
+            <button
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="h-10 px-4 rounded-xl neo-border-2 bg-white hover:bg-[#f1f5f9] flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <LogoutIcon className="h-4 w-4 text-[#2C2C2C]" />
+              <span className="text-sm font-bold text-[#2C2C2C]">
+                {isLoggingOut ? "..." : "Logout"}
+              </span>
+            </button>
           </nav>
         </div>
       </header>
@@ -106,5 +146,6 @@ export default function DocumentsPage() {
         </div>
       </main>
     </div>
+    </ProtectedRoute>
   );
 }

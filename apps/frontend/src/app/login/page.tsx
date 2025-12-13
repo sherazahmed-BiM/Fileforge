@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/contexts/auth-context";
+import { AuthError } from "@/lib/auth-api";
 
 // Custom SVG Icons - Matching landing page style
 function LogoMark({ className }: { className?: string }) {
@@ -73,7 +74,7 @@ function GitHubIcon({ className }: { className?: string }) {
 }
 
 export default function LoginPage() {
-  const router = useRouter();
+  const { login, isLoading: isAuthLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -85,21 +86,23 @@ export default function LoginPage() {
     setError(null);
     setIsLoading(true);
 
-    // Simulate login - replace with actual auth logic
-    setTimeout(() => {
+    try {
+      await login({ email, password });
+      // Redirect is handled by AuthContext
+    } catch (err) {
+      if (err instanceof AuthError) {
+        setError(err.message);
+      } else {
+        setError("An unexpected error occurred. Please try again.");
+      }
+    } finally {
       setIsLoading(false);
-      // For demo, just redirect to upload
-      router.push("/upload");
-    }, 1500);
+    }
   };
 
+  // Social login placeholder - coming soon
   const handleSocialLogin = (provider: string) => {
-    setIsLoading(true);
-    // Simulate social login - replace with actual OAuth logic
-    setTimeout(() => {
-      setIsLoading(false);
-      router.push("/upload");
-    }, 1500);
+    setError(`${provider} login coming soon!`);
   };
 
   return (

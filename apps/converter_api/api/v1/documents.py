@@ -4,6 +4,7 @@ Document Endpoints for FileForge
 CRUD operations for documents and chunks.
 """
 
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
@@ -13,7 +14,9 @@ from sqlalchemy.orm import selectinload
 from apps.converter_api.dependencies import get_db
 from packages.common.auth.api_key import ApiKeyAuth
 from packages.common.auth.rate_limit import check_rate_limit
+from packages.common.auth.session import get_session_token
 from packages.common.core.logging import get_logger
+from packages.common.models import User
 from packages.common.models.api_key import ApiKey
 from packages.common.models.chunk import Chunk
 from packages.common.models.document import Document, DocumentStatus
@@ -24,11 +27,23 @@ from packages.common.schemas.document import (
     DocumentWithChunksResponse,
     LLMDocumentResponse,
 )
+from packages.common.services.auth import AuthService
 from packages.common.services.conversion import ConverterService
 
 
 logger = get_logger(__name__)
 router = APIRouter()
+
+
+async def get_optional_user_from_session(
+    session_token: Optional[str] = Depends(get_session_token),
+    db: AsyncSession = Depends(get_db),
+) -> Optional[User]:
+    """Get current user if authenticated, None otherwise."""
+    if not session_token:
+        return None
+    auth_service = AuthService(db)
+    return await auth_service.get_user_by_session(session_token)
 
 
 @router.get(
@@ -43,8 +58,12 @@ async def list_documents(
     file_type: str | None = Query(default=None, description="Filter by file type"),
     db: AsyncSession = Depends(get_db),
     api_key: ApiKey | None = Depends(ApiKeyAuth(required=False)),
+    current_user: Optional[User] = Depends(get_optional_user_from_session),
 ) -> DocumentListResponse:
-    """List all documents with pagination and filtering."""
+    """List all documents with pagination and filtering.
+
+    If authenticated, only shows documents belonging to the current user.
+    """
     # Apply rate limiting if API key is provided
     if api_key:
         await check_rate_limit(
@@ -55,6 +74,10 @@ async def list_documents(
 
     # Build query
     query = select(Document).order_by(Document.created_at.desc())
+
+    # Filter by user if authenticated
+    if current_user:
+        query = query.where(Document.user_id == current_user.id)
 
     if status_filter:
         query = query.where(Document.status == status_filter)
@@ -94,6 +117,7 @@ async def get_document(
     document_id: int,
     include_chunks: bool = Query(default=True, description="Include chunks in response"),
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user_from_session),
 ) -> DocumentWithChunksResponse:
     """Get a document by ID with optional chunks."""
     query = select(Document).where(Document.id == document_id)
@@ -105,6 +129,10 @@ async def get_document(
     document = result.scalar_one_or_none()
 
     if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # Check ownership if user is authenticated
+    if current_user and document.user_id and document.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Document not found")
 
     return DocumentWithChunksResponse.model_validate(document)
@@ -119,6 +147,7 @@ async def get_document_llm_format(
     document_id: int,
     include_raw_text: bool = Query(default=False, description="Include full raw text"),
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user_from_session),
 ) -> LLMDocumentResponse:
     """Get a document formatted for LLM consumption."""
     query = (
@@ -130,6 +159,10 @@ async def get_document_llm_format(
     document = result.scalar_one_or_none()
 
     if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # Check ownership if user is authenticated
+    if current_user and document.user_id and document.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Document not found")
 
     if document.status != DocumentStatus.COMPLETED:
@@ -159,11 +192,16 @@ async def get_document_chunks(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user_from_session),
 ) -> list[ChunkResponse]:
     """Get chunks for a document with pagination."""
     # Verify document exists
     document = await db.get(Document, document_id)
     if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # Check ownership if user is authenticated
+    if current_user and document.user_id and document.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Document not found")
 
     # Query chunks
@@ -190,8 +228,18 @@ async def get_document_chunks(
 async def delete_document(
     document_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user_from_session),
 ) -> None:
     """Delete a document and all its chunks."""
+    # Verify document exists and check ownership
+    document = await db.get(Document, document_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # Check ownership if user is authenticated
+    if current_user and document.user_id and document.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Document not found")
+
     converter = ConverterService(db)
     deleted = await converter.delete_document(document_id)
 
@@ -209,12 +257,17 @@ async def delete_document(
 async def reprocess_document(
     document_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user_from_session),
 ) -> DocumentResponse:
     """Reset a failed document and queue for reprocessing."""
     from apps.worker.tasks.convert_task import convert_document
 
     document = await db.get(Document, document_id)
     if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # Check ownership if user is authenticated
+    if current_user and document.user_id and document.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Document not found")
 
     if document.status not in [DocumentStatus.FAILED, DocumentStatus.COMPLETED]:

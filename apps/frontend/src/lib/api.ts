@@ -29,6 +29,7 @@ async function fetchApi<T>(
   const url = getApiUrl(endpoint);
   const response = await fetch(url, {
     ...options,
+    credentials: "include", // Include cookies for session auth
     headers: {
       "Content-Type": "application/json",
       ...options?.headers,
@@ -79,6 +80,7 @@ export async function convertFile(
       method: "POST",
       body: formData,
       signal: controller.signal,
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -127,6 +129,7 @@ export async function convertFileSync(
       method: "POST",
       body: formData,
       signal: controller.signal,
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -161,6 +164,7 @@ export async function extractPDFText(file: File): Promise<PDFExtractionResponse>
       method: "POST",
       body: formData,
       signal: controller.signal,
+      credentials: "include",
     });
 
     if (!response.ok) {
