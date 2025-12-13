@@ -1,200 +1,388 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "motion/react";
-import {
-  Book,
-  Code,
-  Copy,
-  Check,
-  ChevronRight,
-  Key,
-  Zap,
-  Shield,
-  Clock,
-  FileText,
-  AlertTriangle,
-} from "lucide-react";
-import { Header } from "@/components/layout";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context";
+
+// Custom SVG Icons
+function LogoMark({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 32 32" fill="none">
+      <rect width="32" height="32" rx="8" fill="#C4705A" />
+      <path
+        d="M8 10h16M8 16h12M8 22h14"
+        stroke="#FAF8F5"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
+      <circle cx="24" cy="22" r="3" fill="#FAF8F5" />
+    </svg>
+  );
+}
+
+function HomeIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9,22 9,12 15,12 15,22" />
+    </svg>
+  );
+}
+
+function FolderIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+function KeyIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+    </svg>
+  );
+}
+
+function BookIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </svg>
+  );
+}
+
+function SettingsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
+
+function LogOutIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16,17 21,12 16,7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  );
+}
+
+function CopyIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20,6 9,17 4,12" />
+    </svg>
+  );
+}
+
+function ZapIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="13,2 3,14 12,14 11,22 21,10 12,10 13,2" />
+    </svg>
+  );
+}
+
+function ShieldIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  );
+}
+
+function CodeIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="16,18 22,12 16,6" />
+      <polyline points="8,6 2,12 8,18" />
+    </svg>
+  );
+}
+
+function ClockIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12,6 12,12 16,14" />
+    </svg>
+  );
+}
+
+function AlertIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  );
+}
+
+function FileIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14,2 14,8 20,8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <polyline points="10,9 9,9 8,9" />
+    </svg>
+  );
+}
+
+function ChevronRightIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="9,18 15,12 9,6" />
+    </svg>
+  );
+}
+
+const navItems = [
+  { href: "/dashboard", icon: HomeIcon, label: "Dashboard" },
+  { href: "/documents", icon: FolderIcon, label: "Documents" },
+  { href: "/api-keys", icon: KeyIcon, label: "API Keys" },
+  { href: "/api-keys/docs", icon: BookIcon, label: "API Docs" },
+  { href: "/settings", icon: SettingsIcon, label: "Settings" },
+];
 
 export default function APIDocsPage() {
-  return (
-    <div className="flex flex-col">
-      <Header
-        title="API Documentation"
-        description="Complete guide to using the FileForge Public API"
-        actions={
-          <Link href="/api-keys">
-            <Button>
-              <Key className="mr-2 h-4 w-4" />
-              Manage API Keys
-            </Button>
-          </Link>
-        }
-      />
+  const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuth();
+  const [activeTab, setActiveTab] = useState<"python" | "javascript" | "curl" | "go">("python");
 
-      <div className="flex-1 p-6">
-        <div className="mx-auto max-w-4xl space-y-8">
-          {/* Quick Start */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+  const handleLogout = async () => {
+    await logout();
+    router.push("/login");
+  };
+
+  return (
+    <div className="h-screen bg-[#FAF8F5] flex overflow-hidden">
+      {/* Sidebar */}
+      <aside className="w-64 bg-[#FAF8F5] border-r-[2.5px] border-[#2C2C2C] flex flex-col shrink-0">
+        {/* Logo */}
+        <div className="p-6 border-b-[2.5px] border-[#2C2C2C]">
+          <Link href="/" className="flex items-center gap-3">
+            <LogoMark className="w-10 h-10" />
+            <span className="font-display text-xl font-bold text-[#2C2C2C]">FileForge</span>
+          </Link>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-2">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl font-body font-medium transition-all ${
+                  isActive
+                    ? "bg-[#4A6B5A] text-white border-[2.5px] border-[#2C2C2C] neo-shadow-sm"
+                    : "text-[#2C2C2C] hover:bg-[#E8E4DF]"
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* User Section */}
+        <div className="p-4 border-t-[2.5px] border-[#2C2C2C]">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-full bg-[#C4705A] border-[2.5px] border-[#2C2C2C] flex items-center justify-center">
+              <span className="text-white font-display font-bold">
+                {user?.email?.[0]?.toUpperCase() || "U"}
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-body font-medium text-[#2C2C2C] truncate text-sm">
+                {user?.email || "User"}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-2 rounded-xl text-[#6B6B6B] hover:bg-[#E8E4DF] font-body transition-colors"
           >
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-yellow-500" />
-                  <CardTitle>Quick Start</CardTitle>
+            <LogOutIcon className="w-5 h-5" />
+            <span>Log out</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-auto">
+        {/* Header */}
+        <div className="sticky top-0 bg-[#FAF8F5] border-b-[2.5px] border-[#2C2C2C] px-8 py-6 z-10">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="font-display text-3xl font-bold text-[#2C2C2C]">
+                API Documentation
+              </h1>
+              <p className="font-body text-[#6B6B6B] mt-1">
+                Complete guide to using the FileForge Public API
+              </p>
+            </div>
+            <Link
+              href="/api-keys"
+              className="inline-flex items-center gap-2 px-5 py-3 bg-[#C4705A] text-white font-body font-semibold rounded-xl border-[2.5px] border-[#2C2C2C] neo-shadow-sm hover:translate-y-[2px] hover:shadow-none transition-all"
+            >
+              <KeyIcon className="w-5 h-5" />
+              Manage API Keys
+            </Link>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-8 max-w-4xl mx-auto space-y-8">
+          {/* Quick Start */}
+          <section className="bg-white rounded-2xl border-[2.5px] border-[#2C2C2C] neo-shadow-sm overflow-hidden">
+            <div className="p-6 border-b-[2.5px] border-[#2C2C2C] bg-[#FFF9E6]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#FFD93D] border-[2.5px] border-[#2C2C2C] flex items-center justify-center">
+                  <ZapIcon className="w-5 h-5 text-[#2C2C2C]" />
                 </div>
-                <CardDescription>
-                  Get started with the FileForge API in minutes
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="flex items-start gap-3 rounded-lg border p-4">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                      1
-                    </div>
-                    <div>
-                      <p className="font-medium">Create API Key</p>
-                      <p className="text-sm text-muted-foreground">
-                        Go to{" "}
-                        <Link href="/api-keys" className="text-primary underline">
-                          API Keys
-                        </Link>{" "}
-                        and create a new key
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 rounded-lg border p-4">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                      2
-                    </div>
-                    <div>
-                      <p className="font-medium">Add Header</p>
-                      <p className="text-sm text-muted-foreground">
-                        Include <code className="text-xs">X-API-Key</code> in requests
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 rounded-lg border p-4">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                      3
-                    </div>
-                    <div>
-                      <p className="font-medium">Convert Files</p>
-                      <p className="text-sm text-muted-foreground">
-                        Upload files to get LLM-ready output
-                      </p>
-                    </div>
-                  </div>
+                <div>
+                  <h2 className="font-display text-xl font-bold text-[#2C2C2C]">Quick Start</h2>
+                  <p className="font-body text-sm text-[#6B6B6B]">Get started with the FileForge API in minutes</p>
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+              </div>
+            </div>
+            <div className="p-6">
+              <div className="grid gap-4 md:grid-cols-3">
+                {[
+                  { step: 1, title: "Create API Key", desc: "Go to API Keys and create a new key", link: "/api-keys" },
+                  { step: 2, title: "Add Header", desc: "Include X-API-Key in requests", code: "X-API-Key" },
+                  { step: 3, title: "Convert Files", desc: "Upload files to get LLM-ready output", icon: true },
+                ].map((item) => (
+                  <div key={item.step} className="flex items-start gap-4 p-4 rounded-xl bg-[#FAF8F5] border-[2px] border-[#E8E4DF]">
+                    <div className="w-10 h-10 rounded-full bg-[#4A6B5A] border-[2.5px] border-[#2C2C2C] flex items-center justify-center shrink-0">
+                      <span className="text-white font-display font-bold">{item.step}</span>
+                    </div>
+                    <div>
+                      <p className="font-display font-semibold text-[#2C2C2C]">{item.title}</p>
+                      <p className="font-body text-sm text-[#6B6B6B] mt-1">
+                        {item.link ? (
+                          <>
+                            Go to{" "}
+                            <Link href={item.link} className="text-[#C4705A] underline underline-offset-2">
+                              API Keys
+                            </Link>{" "}
+                            and create a new key
+                          </>
+                        ) : item.code ? (
+                          <>
+                            Include <code className="px-1.5 py-0.5 bg-[#2C2C2C] text-white rounded text-xs">{item.code}</code> in requests
+                          </>
+                        ) : (
+                          item.desc
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
 
           {/* Authentication */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-green-500" />
-                  <CardTitle>Authentication</CardTitle>
+          <section className="bg-white rounded-2xl border-[2.5px] border-[#2C2C2C] neo-shadow-sm overflow-hidden">
+            <div className="p-6 border-b-[2.5px] border-[#2C2C2C] bg-[#E8F5E9]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#4A6B5A] border-[2.5px] border-[#2C2C2C] flex items-center justify-center">
+                  <ShieldIcon className="w-5 h-5 text-white" />
                 </div>
-                <CardDescription>
-                  How to authenticate your API requests
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  All API requests must include your API key in the{" "}
-                  <code className="rounded bg-muted px-1">X-API-Key</code> header.
-                  API keys start with <code className="rounded bg-muted px-1">ff_live_</code>.
-                </p>
-                <CodeBlock
-                  title="Example Request Header"
-                  code={`X-API-Key: ff_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`}
-                  language="http"
-                />
-                <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-900 dark:bg-yellow-950">
-                  <div className="flex gap-3">
-                    <AlertTriangle className="h-5 w-5 shrink-0 text-yellow-600 dark:text-yellow-400" />
-                    <div className="text-sm text-yellow-800 dark:text-yellow-200">
-                      <p className="font-medium">Keep your API key secure</p>
-                      <p>
-                        Never expose your API key in client-side code or public repositories.
-                        Use environment variables to store keys securely.
-                      </p>
-                    </div>
+                <div>
+                  <h2 className="font-display text-xl font-bold text-[#2C2C2C]">Authentication</h2>
+                  <p className="font-body text-sm text-[#6B6B6B]">How to authenticate your API requests</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="font-body text-[#6B6B6B]">
+                All API requests must include your API key in the{" "}
+                <code className="px-1.5 py-0.5 bg-[#2C2C2C] text-white rounded text-sm">X-API-Key</code> header.
+                API keys start with <code className="px-1.5 py-0.5 bg-[#2C2C2C] text-white rounded text-sm">ff_live_</code>.
+              </p>
+              <CodeBlock
+                title="Example Request Header"
+                code={`X-API-Key: ff_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`}
+              />
+              <div className="p-4 rounded-xl bg-[#FFF3E0] border-[2px] border-[#FFB74D]">
+                <div className="flex gap-3">
+                  <AlertIcon className="w-5 h-5 text-[#F57C00] shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-display font-semibold text-[#E65100]">Keep your API key secure</p>
+                    <p className="font-body text-sm text-[#E65100] mt-1">
+                      Never expose your API key in client-side code or public repositories.
+                      Use environment variables to store keys securely.
+                    </p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+              </div>
+            </div>
+          </section>
 
           {/* Base URL */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle>Base URL</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CodeBlock
-                  code={`https://your-domain.com/api/v1/public`}
-                  language="text"
-                />
-                <p className="mt-2 text-sm text-muted-foreground">
-                  For local development: <code className="rounded bg-muted px-1">http://localhost:19000/api/v1/public</code>
-                </p>
-              </CardContent>
-            </Card>
-          </motion.div>
+          <section className="bg-white rounded-2xl border-[2.5px] border-[#2C2C2C] neo-shadow-sm overflow-hidden">
+            <div className="p-6 border-b-[2.5px] border-[#2C2C2C]">
+              <h2 className="font-display text-xl font-bold text-[#2C2C2C]">Base URL</h2>
+            </div>
+            <div className="p-6">
+              <CodeBlock code={`https://your-domain.com/api/v1/public`} />
+              <p className="font-body text-sm text-[#6B6B6B] mt-3">
+                For local development:{" "}
+                <code className="px-1.5 py-0.5 bg-[#2C2C2C] text-white rounded text-xs">
+                  http://localhost:19000/api/v1/public
+                </code>
+              </p>
+            </div>
+          </section>
 
-          {/* Endpoints */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Code className="h-5 w-5 text-blue-500" />
-                  <CardTitle>API Endpoints</CardTitle>
+          {/* API Endpoints */}
+          <section className="bg-white rounded-2xl border-[2.5px] border-[#2C2C2C] neo-shadow-sm overflow-hidden">
+            <div className="p-6 border-b-[2.5px] border-[#2C2C2C] bg-[#E3F2FD]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#2196F3] border-[2.5px] border-[#2C2C2C] flex items-center justify-center">
+                  <CodeIcon className="w-5 h-5 text-white" />
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Convert Endpoint */}
-                <EndpointSection
-                  method="POST"
-                  path="/convert"
-                  description="Convert a file to LLM-ready format (synchronous)"
-                  requestBody={`# Form Data
+                <h2 className="font-display text-xl font-bold text-[#2C2C2C]">API Endpoints</h2>
+              </div>
+            </div>
+            <div className="p-6 space-y-6">
+              {/* Convert Endpoint */}
+              <EndpointSection
+                method="POST"
+                path="/convert"
+                description="Convert a file to LLM-ready format (synchronous)"
+                requestBody={`# Form Data
 file: <binary>           # Required - The file to convert
 chunk_strategy: semantic # Optional - semantic, fixed, or none
 chunk_size: 1000         # Optional - Characters per chunk (100-10000)
 chunk_overlap: 100       # Optional - Overlap between chunks (0-500)`}
-                  responseExample={`{
+                responseExample={`{
   "success": true,
   "document": {
     "filename": "report.pdf",
@@ -227,14 +415,14 @@ chunk_overlap: 100       # Optional - Overlap between chunks (0-500)`}
     "processing_time_ms": 1234
   }
 }`}
-                />
+              />
 
-                {/* Usage Endpoint */}
-                <EndpointSection
-                  method="GET"
-                  path="/usage"
-                  description="Get current usage statistics for your API key"
-                  responseExample={`{
+              {/* Usage Endpoint */}
+              <EndpointSection
+                method="GET"
+                path="/usage"
+                description="Get current usage statistics for your API key"
+                responseExample={`{
   "success": true,
   "api_key_name": "Production",
   "rate_limit_rpm": 60,
@@ -244,14 +432,14 @@ chunk_overlap: 100       # Optional - Overlap between chunks (0-500)`}
   "total_requests": 1523,
   "last_used_at": "2025-01-15T10:30:00Z"
 }`}
-                />
+              />
 
-                {/* Formats Endpoint */}
-                <EndpointSection
-                  method="GET"
-                  path="/formats"
-                  description="List all supported file formats"
-                  responseExample={`{
+              {/* Formats Endpoint */}
+              <EndpointSection
+                method="GET"
+                path="/formats"
+                description="List all supported file formats"
+                responseExample={`{
   "success": true,
   "formats": [
     {
@@ -269,40 +457,46 @@ chunk_overlap: 100       # Optional - Overlap between chunks (0-500)`}
   ],
   "total": 50
 }`}
-                />
-              </CardContent>
-            </Card>
-          </motion.div>
+              />
+            </div>
+          </section>
 
           {/* Code Examples */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-          >
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-purple-500" />
-                  <CardTitle>Code Examples</CardTitle>
+          <section className="bg-white rounded-2xl border-[2.5px] border-[#2C2C2C] neo-shadow-sm overflow-hidden">
+            <div className="p-6 border-b-[2.5px] border-[#2C2C2C] bg-[#F3E5F5]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#9C27B0] border-[2.5px] border-[#2C2C2C] flex items-center justify-center">
+                  <FileIcon className="w-5 h-5 text-white" />
                 </div>
-                <CardDescription>
-                  Ready-to-use examples in popular languages
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="python" className="w-full">
-                  <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="python">Python</TabsTrigger>
-                    <TabsTrigger value="javascript">JavaScript</TabsTrigger>
-                    <TabsTrigger value="curl">cURL</TabsTrigger>
-                    <TabsTrigger value="go">Go</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="python" className="mt-4">
-                    <CodeBlock
-                      title="Python (requests)"
-                      language="python"
-                      code={`import requests
+                <div>
+                  <h2 className="font-display text-xl font-bold text-[#2C2C2C]">Code Examples</h2>
+                  <p className="font-body text-sm text-[#6B6B6B]">Ready-to-use examples in popular languages</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-6">
+              {/* Custom Tabs */}
+              <div className="flex gap-2 mb-4 p-1 bg-[#FAF8F5] rounded-xl border-[2px] border-[#E8E4DF]">
+                {(["python", "javascript", "curl", "go"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`flex-1 px-4 py-2.5 rounded-lg font-body font-medium text-sm transition-all ${
+                      activeTab === tab
+                        ? "bg-[#2C2C2C] text-white"
+                        : "text-[#6B6B6B] hover:text-[#2C2C2C]"
+                    }`}
+                  >
+                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  </button>
+                ))}
+              </div>
+
+              {/* Tab Content */}
+              {activeTab === "python" && (
+                <CodeBlock
+                  title="Python (requests)"
+                  code={`import requests
 
 API_KEY = "ff_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 API_URL = "http://localhost:19000/api/v1/public/convert"
@@ -330,13 +524,13 @@ if response.status_code == 200:
         print(f"Chunk {chunk['index']}: {chunk['text'][:100]}...")
 else:
     print(f"Error: {response.json()}")`}
-                    />
-                  </TabsContent>
-                  <TabsContent value="javascript" className="mt-4">
-                    <CodeBlock
-                      title="JavaScript (Node.js)"
-                      language="javascript"
-                      code={`const fs = require('fs');
+                />
+              )}
+
+              {activeTab === "javascript" && (
+                <CodeBlock
+                  title="JavaScript (Node.js)"
+                  code={`const fs = require('fs');
 const FormData = require('form-data');
 
 const API_KEY = 'ff_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
@@ -369,13 +563,13 @@ async function convertFile(filePath) {
 convertFile('document.pdf')
   .then(result => console.log(result))
   .catch(err => console.error(err));`}
-                    />
-                  </TabsContent>
-                  <TabsContent value="curl" className="mt-4">
-                    <CodeBlock
-                      title="cURL"
-                      language="bash"
-                      code={`# Convert a file
+                />
+              )}
+
+              {activeTab === "curl" && (
+                <CodeBlock
+                  title="cURL"
+                  code={`# Convert a file
 curl -X POST "http://localhost:19000/api/v1/public/convert" \\
   -H "X-API-Key: ff_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \\
   -F "file=@document.pdf" \\
@@ -389,13 +583,13 @@ curl "http://localhost:19000/api/v1/public/usage" \\
 # List supported formats
 curl "http://localhost:19000/api/v1/public/formats" \\
   -H "X-API-Key: ff_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"`}
-                    />
-                  </TabsContent>
-                  <TabsContent value="go" className="mt-4">
-                    <CodeBlock
-                      title="Go"
-                      language="go"
-                      code={`package main
+                />
+              )}
+
+              {activeTab === "go" && (
+                <CodeBlock
+                  title="Go"
+                  code={`package main
 
 import (
     "bytes"
@@ -450,64 +644,54 @@ func main() {
     }
     fmt.Printf("Result: %+v\\n", result)
 }`}
-                    />
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-          </motion.div>
+                />
+              )}
+            </div>
+          </section>
 
           {/* Rate Limits */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-orange-500" />
-                  <CardTitle>Rate Limits</CardTitle>
+          <section className="bg-white rounded-2xl border-[2.5px] border-[#2C2C2C] neo-shadow-sm overflow-hidden">
+            <div className="p-6 border-b-[2.5px] border-[#2C2C2C] bg-[#FFF3E0]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#FF9800] border-[2.5px] border-[#2C2C2C] flex items-center justify-center">
+                  <ClockIcon className="w-5 h-5 text-white" />
                 </div>
-                <CardDescription>
-                  Understanding API rate limiting
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-lg border p-4">
-                    <p className="text-3xl font-bold">60</p>
-                    <p className="text-sm text-muted-foreground">
-                      Requests per minute (RPM)
-                    </p>
-                  </div>
-                  <div className="rounded-lg border p-4">
-                    <p className="text-3xl font-bold">1,000</p>
-                    <p className="text-sm text-muted-foreground">
-                      Requests per day (RPD)
-                    </p>
-                  </div>
+                <div>
+                  <h2 className="font-display text-xl font-bold text-[#2C2C2C]">Rate Limits</h2>
+                  <p className="font-body text-sm text-[#6B6B6B]">Understanding API rate limiting</p>
                 </div>
+              </div>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="p-6 rounded-xl bg-[#FAF8F5] border-[2px] border-[#E8E4DF]">
+                  <p className="font-display text-4xl font-bold text-[#4A6B5A]">60</p>
+                  <p className="font-body text-[#6B6B6B] mt-1">Requests per minute (RPM)</p>
+                </div>
+                <div className="p-6 rounded-xl bg-[#FAF8F5] border-[2px] border-[#E8E4DF]">
+                  <p className="font-display text-4xl font-bold text-[#4A6B5A]">1,000</p>
+                  <p className="font-body text-[#6B6B6B] mt-1">Requests per day (RPD)</p>
+                </div>
+              </div>
 
-                <div className="space-y-2">
-                  <p className="font-medium">Rate Limit Headers</p>
-                  <p className="text-sm text-muted-foreground">
-                    Every response includes headers to help you track your usage:
-                  </p>
-                  <CodeBlock
-                    code={`X-RateLimit-Limit: 60
+              <div className="space-y-3">
+                <p className="font-display font-semibold text-[#2C2C2C]">Rate Limit Headers</p>
+                <p className="font-body text-sm text-[#6B6B6B]">
+                  Every response includes headers to help you track your usage:
+                </p>
+                <CodeBlock
+                  code={`X-RateLimit-Limit: 60
 X-RateLimit-Remaining: 45
 X-RateLimit-Reset: 1699999999
 X-RateLimit-Limit-Day: 1000
 X-RateLimit-Remaining-Day: 858`}
-                    language="http"
-                  />
-                </div>
+                />
+              </div>
 
-                <div className="space-y-2">
-                  <p className="font-medium">Rate Limit Exceeded Response</p>
-                  <CodeBlock
-                    code={`{
+              <div className="space-y-3">
+                <p className="font-display font-semibold text-[#2C2C2C]">Rate Limit Exceeded Response</p>
+                <CodeBlock
+                  code={`{
   "success": false,
   "error": {
     "code": "RATE_LIMIT_EXCEEDED",
@@ -515,227 +699,145 @@ X-RateLimit-Remaining-Day: 858`}
     "retry_after": 60
   }
 }`}
-                    language="json"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+                />
+              </div>
+            </div>
+          </section>
 
           {/* Error Codes */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
-          >
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-red-500" />
-                  <CardTitle>Error Codes</CardTitle>
+          <section className="bg-white rounded-2xl border-[2.5px] border-[#2C2C2C] neo-shadow-sm overflow-hidden">
+            <div className="p-6 border-b-[2.5px] border-[#2C2C2C] bg-[#FFEBEE]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#F44336] border-[2.5px] border-[#2C2C2C] flex items-center justify-center">
+                  <AlertIcon className="w-5 h-5 text-white" />
                 </div>
-                <CardDescription>
-                  Common errors and how to handle them
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="py-3 text-left font-medium">Status</th>
-                        <th className="py-3 text-left font-medium">Code</th>
-                        <th className="py-3 text-left font-medium">Description</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      <tr>
-                        <td className="py-3">
-                          <Badge variant="destructive">400</Badge>
-                        </td>
-                        <td className="py-3 font-mono text-xs">INVALID_FILE</td>
-                        <td className="py-3 text-muted-foreground">
-                          Missing or invalid file in request
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="py-3">
-                          <Badge variant="destructive">400</Badge>
-                        </td>
-                        <td className="py-3 font-mono text-xs">UNSUPPORTED_FORMAT</td>
-                        <td className="py-3 text-muted-foreground">
-                          File format not supported
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="py-3">
-                          <Badge variant="destructive">400</Badge>
-                        </td>
-                        <td className="py-3 font-mono text-xs">FILE_TOO_LARGE</td>
-                        <td className="py-3 text-muted-foreground">
-                          File exceeds maximum size (100MB)
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="py-3">
-                          <Badge variant="destructive">401</Badge>
-                        </td>
-                        <td className="py-3 font-mono text-xs">UNAUTHORIZED</td>
-                        <td className="py-3 text-muted-foreground">
-                          Missing or invalid API key
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="py-3">
-                          <Badge variant="destructive">401</Badge>
-                        </td>
-                        <td className="py-3 font-mono text-xs">KEY_REVOKED</td>
-                        <td className="py-3 text-muted-foreground">
-                          API key has been revoked
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="py-3">
-                          <Badge variant="destructive">401</Badge>
-                        </td>
-                        <td className="py-3 font-mono text-xs">KEY_EXPIRED</td>
-                        <td className="py-3 text-muted-foreground">
-                          API key has expired
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="py-3">
-                          <Badge variant="secondary">429</Badge>
-                        </td>
-                        <td className="py-3 font-mono text-xs">RATE_LIMIT_EXCEEDED</td>
-                        <td className="py-3 text-muted-foreground">
-                          Too many requests, wait and retry
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="py-3">
-                          <Badge variant="destructive">500</Badge>
-                        </td>
-                        <td className="py-3 font-mono text-xs">PROCESSING_ERROR</td>
-                        <td className="py-3 text-muted-foreground">
-                          Server error during file processing
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                <div>
+                  <h2 className="font-display text-xl font-bold text-[#2C2C2C]">Error Codes</h2>
+                  <p className="font-body text-sm text-[#6B6B6B]">Common errors and how to handle them</p>
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+              </div>
+            </div>
+            <div className="p-6">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b-[2px] border-[#E8E4DF]">
+                      <th className="py-3 text-left font-display font-semibold text-[#2C2C2C]">Status</th>
+                      <th className="py-3 text-left font-display font-semibold text-[#2C2C2C]">Code</th>
+                      <th className="py-3 text-left font-display font-semibold text-[#2C2C2C]">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#E8E4DF]">
+                    {[
+                      { status: 400, code: "INVALID_FILE", desc: "Missing or invalid file in request", variant: "error" },
+                      { status: 400, code: "UNSUPPORTED_FORMAT", desc: "File format not supported", variant: "error" },
+                      { status: 400, code: "FILE_TOO_LARGE", desc: "File exceeds maximum size (100MB)", variant: "error" },
+                      { status: 401, code: "UNAUTHORIZED", desc: "Missing or invalid API key", variant: "error" },
+                      { status: 401, code: "KEY_REVOKED", desc: "API key has been revoked", variant: "error" },
+                      { status: 401, code: "KEY_EXPIRED", desc: "API key has expired", variant: "error" },
+                      { status: 429, code: "RATE_LIMIT_EXCEEDED", desc: "Too many requests, wait and retry", variant: "warning" },
+                      { status: 500, code: "PROCESSING_ERROR", desc: "Server error during file processing", variant: "error" },
+                    ].map((err) => (
+                      <tr key={err.code}>
+                        <td className="py-3">
+                          <span className={`inline-flex px-2.5 py-1 rounded-lg text-sm font-display font-semibold border-[2px] ${
+                            err.variant === "warning"
+                              ? "bg-[#FFF3E0] text-[#E65100] border-[#FFB74D]"
+                              : "bg-[#FFEBEE] text-[#C62828] border-[#EF9A9A]"
+                          }`}>
+                            {err.status}
+                          </span>
+                        </td>
+                        <td className="py-3">
+                          <code className="px-2 py-1 bg-[#2C2C2C] text-white rounded text-xs font-mono">
+                            {err.code}
+                          </code>
+                        </td>
+                        <td className="py-3 font-body text-[#6B6B6B]">{err.desc}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
 
           {/* Supported Formats */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle>Supported File Formats</CardTitle>
-                <CardDescription>50+ formats supported</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <FormatCategory
-                    title="Documents"
-                    formats={["PDF", "DOCX", "DOC", "RTF", "ODT", "TXT"]}
-                  />
-                  <FormatCategory
-                    title="Spreadsheets"
-                    formats={["XLSX", "XLS", "CSV", "TSV", "ODS"]}
-                  />
-                  <FormatCategory
-                    title="Presentations"
-                    formats={["PPTX", "PPT", "ODP"]}
-                  />
-                  <FormatCategory
-                    title="Markup"
-                    formats={["HTML", "Markdown", "RST", "AsciiDoc"]}
-                  />
-                  <FormatCategory
-                    title="Images (OCR)"
-                    formats={["PNG", "JPG", "TIFF", "BMP", "WebP"]}
-                  />
-                  <FormatCategory
-                    title="Other"
-                    formats={["EPUB", "EML", "MSG", "JSON", "XML"]}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+          <section className="bg-white rounded-2xl border-[2.5px] border-[#2C2C2C] neo-shadow-sm overflow-hidden">
+            <div className="p-6 border-b-[2.5px] border-[#2C2C2C]">
+              <h2 className="font-display text-xl font-bold text-[#2C2C2C]">Supported File Formats</h2>
+              <p className="font-body text-sm text-[#6B6B6B] mt-1">50+ formats supported</p>
+            </div>
+            <div className="p-6">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {[
+                  { title: "Documents", formats: ["PDF", "DOCX", "DOC", "RTF", "ODT", "TXT"], color: "#4A6B5A" },
+                  { title: "Spreadsheets", formats: ["XLSX", "XLS", "CSV", "TSV", "ODS"], color: "#2196F3" },
+                  { title: "Presentations", formats: ["PPTX", "PPT", "ODP"], color: "#9C27B0" },
+                  { title: "Markup", formats: ["HTML", "Markdown", "RST", "AsciiDoc"], color: "#FF9800" },
+                  { title: "Images (OCR)", formats: ["PNG", "JPG", "TIFF", "BMP", "WebP"], color: "#F44336" },
+                  { title: "Other", formats: ["EPUB", "EML", "MSG", "JSON", "XML"], color: "#607D8B" },
+                ].map((cat) => (
+                  <div key={cat.title} className="p-4 rounded-xl bg-[#FAF8F5] border-[2px] border-[#E8E4DF]">
+                    <p className="font-display font-semibold text-[#2C2C2C] mb-3">{cat.title}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {cat.formats.map((format) => (
+                        <span
+                          key={format}
+                          className="px-2.5 py-1 rounded-lg text-xs font-body font-medium border-[2px]"
+                          style={{
+                            backgroundColor: `${cat.color}15`,
+                            borderColor: cat.color,
+                            color: cat.color,
+                          }}
+                        >
+                          {format}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
 
           {/* Best Practices */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.45 }}
-          >
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Book className="h-5 w-5 text-indigo-500" />
-                  <CardTitle>Best Practices</CardTitle>
+          <section className="bg-white rounded-2xl border-[2.5px] border-[#2C2C2C] neo-shadow-sm overflow-hidden">
+            <div className="p-6 border-b-[2.5px] border-[#2C2C2C] bg-[#E8EAF6]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#3F51B5] border-[2.5px] border-[#2C2C2C] flex items-center justify-center">
+                  <BookIcon className="w-5 h-5 text-white" />
                 </div>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3">
-                  <li className="flex items-start gap-3">
-                    <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                <h2 className="font-display text-xl font-bold text-[#2C2C2C]">Best Practices</h2>
+              </div>
+            </div>
+            <div className="p-6">
+              <ul className="space-y-4">
+                {[
+                  { title: "Use environment variables", desc: "Never hardcode API keys. Use environment variables or secret managers." },
+                  { title: "Handle rate limits gracefully", desc: "Implement exponential backoff when you receive 429 responses." },
+                  { title: "Choose the right chunk strategy", desc: 'Use "semantic" for documents with clear structure, "fixed" for uniform chunks.' },
+                  { title: "Rotate keys periodically", desc: "Create new API keys and deprecate old ones for better security." },
+                  { title: "Monitor your usage", desc: "Use the /usage endpoint to track consumption and avoid hitting limits." },
+                ].map((item) => (
+                  <li key={item.title} className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-[#4A6B5A] flex items-center justify-center shrink-0 mt-0.5">
+                      <ChevronRightIcon className="w-4 h-4 text-white" />
+                    </div>
                     <div>
-                      <p className="font-medium">Use environment variables</p>
-                      <p className="text-sm text-muted-foreground">
-                        Never hardcode API keys. Use environment variables or secret managers.
-                      </p>
+                      <p className="font-display font-semibold text-[#2C2C2C]">{item.title}</p>
+                      <p className="font-body text-sm text-[#6B6B6B] mt-1">{item.desc}</p>
                     </div>
                   </li>
-                  <li className="flex items-start gap-3">
-                    <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                    <div>
-                      <p className="font-medium">Handle rate limits gracefully</p>
-                      <p className="text-sm text-muted-foreground">
-                        Implement exponential backoff when you receive 429 responses.
-                      </p>
-                    </div>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                    <div>
-                      <p className="font-medium">Choose the right chunk strategy</p>
-                      <p className="text-sm text-muted-foreground">
-                        Use "semantic" for documents with clear structure, "fixed" for uniform chunks.
-                      </p>
-                    </div>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                    <div>
-                      <p className="font-medium">Rotate keys periodically</p>
-                      <p className="text-sm text-muted-foreground">
-                        Create new API keys and deprecate old ones for better security.
-                      </p>
-                    </div>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                    <div>
-                      <p className="font-medium">Monitor your usage</p>
-                      <p className="text-sm text-muted-foreground">
-                        Use the /usage endpoint to track consumption and avoid hitting limits.
-                      </p>
-                    </div>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-          </motion.div>
+                ))}
+              </ul>
+            </div>
+          </section>
+
+          {/* Bottom Spacing */}
+          <div className="h-8" />
         </div>
-      </div>
+      </main>
     </div>
   );
 }
@@ -744,11 +846,9 @@ X-RateLimit-Remaining-Day: 858`}
 function CodeBlock({
   title,
   code,
-  language,
 }: {
   title?: string;
   code: string;
-  language: string;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -759,35 +859,36 @@ function CodeBlock({
   };
 
   return (
-    <div className="rounded-lg border bg-muted/50">
+    <div className="rounded-xl border-[2px] border-[#2C2C2C] overflow-hidden">
       {title && (
-        <div className="flex items-center justify-between border-b px-4 py-2">
-          <span className="text-sm font-medium">{title}</span>
-          <Button variant="ghost" size="sm" onClick={handleCopy}>
-            {copied ? (
-              <Check className="h-4 w-4 text-green-600" />
-            ) : (
-              <Copy className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
-      )}
-      <div className="relative">
-        {!title && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="absolute right-2 top-2"
+        <div className="flex items-center justify-between px-4 py-2 bg-[#2C2C2C]">
+          <span className="text-sm font-body font-medium text-[#FAF8F5]">{title}</span>
+          <button
             onClick={handleCopy}
+            className="p-1.5 rounded-lg hover:bg-[#3C3C3C] transition-colors"
           >
             {copied ? (
-              <Check className="h-4 w-4 text-green-600" />
+              <CheckIcon className="w-4 h-4 text-[#4CAF50]" />
             ) : (
-              <Copy className="h-4 w-4" />
+              <CopyIcon className="w-4 h-4 text-[#FAF8F5]" />
             )}
-          </Button>
+          </button>
+        </div>
+      )}
+      <div className="relative bg-[#1A1A1A]">
+        {!title && (
+          <button
+            onClick={handleCopy}
+            className="absolute right-2 top-2 p-1.5 rounded-lg hover:bg-[#2C2C2C] transition-colors"
+          >
+            {copied ? (
+              <CheckIcon className="w-4 h-4 text-[#4CAF50]" />
+            ) : (
+              <CopyIcon className="w-4 h-4 text-[#6B6B6B]" />
+            )}
+          </button>
         )}
-        <pre className="overflow-x-auto p-4 text-sm">
+        <pre className="overflow-x-auto p-4 text-sm font-mono text-[#E8E4DF]">
           <code>{code}</code>
         </pre>
       </div>
@@ -810,52 +911,31 @@ function EndpointSection({
   responseExample: string;
 }) {
   return (
-    <div className="space-y-3 rounded-lg border p-4">
+    <div className="space-y-4 p-5 rounded-xl bg-[#FAF8F5] border-[2px] border-[#E8E4DF]">
       <div className="flex items-center gap-3">
-        <Badge
-          variant={method === "GET" ? "secondary" : "default"}
-          className={
+        <span
+          className={`px-3 py-1.5 rounded-lg text-sm font-display font-bold border-[2px] ${
             method === "POST"
-              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-              : ""
-          }
+              ? "bg-[#E8F5E9] text-[#2E7D32] border-[#4CAF50]"
+              : "bg-[#E3F2FD] text-[#1565C0] border-[#2196F3]"
+          }`}
         >
           {method}
-        </Badge>
-        <code className="font-mono text-sm">{path}</code>
+        </span>
+        <code className="px-3 py-1.5 bg-[#2C2C2C] text-[#FAF8F5] rounded-lg text-sm font-mono">
+          {path}
+        </code>
       </div>
-      <p className="text-sm text-muted-foreground">{description}</p>
+      <p className="font-body text-[#6B6B6B]">{description}</p>
       {requestBody && (
         <div className="space-y-2">
-          <p className="text-sm font-medium">Request</p>
-          <CodeBlock code={requestBody} language="text" />
+          <p className="font-display font-semibold text-sm text-[#2C2C2C]">Request</p>
+          <CodeBlock code={requestBody} />
         </div>
       )}
       <div className="space-y-2">
-        <p className="text-sm font-medium">Response</p>
-        <CodeBlock code={responseExample} language="json" />
-      </div>
-    </div>
-  );
-}
-
-// Format Category Component
-function FormatCategory({
-  title,
-  formats,
-}: {
-  title: string;
-  formats: string[];
-}) {
-  return (
-    <div className="rounded-lg border p-4">
-      <p className="mb-2 font-medium">{title}</p>
-      <div className="flex flex-wrap gap-1">
-        {formats.map((format) => (
-          <Badge key={format} variant="secondary" className="text-xs">
-            {format}
-          </Badge>
-        ))}
+        <p className="font-display font-semibold text-sm text-[#2C2C2C]">Response</p>
+        <CodeBlock code={responseExample} />
       </div>
     </div>
   );
