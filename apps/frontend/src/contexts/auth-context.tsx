@@ -68,7 +68,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     async (request: LoginRequest) => {
       const response = await authApi.login(request);
       setUser(response.user);
-      router.push("/upload");
+      router.push("/dashboard");
     },
     [router]
   );

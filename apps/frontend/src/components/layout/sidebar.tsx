@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
-  Upload,
   FileText,
   Settings,
   Zap,
@@ -12,6 +11,7 @@ import {
   ChevronRight,
   Key,
   Book,
+  LayoutDashboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -29,7 +29,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { href: "/", label: "Upload", icon: Upload },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/documents", label: "Documents", icon: FileText },
   { href: "/api-keys", label: "API Keys", icon: Key },
   { href: "/api-keys/docs", label: "API Docs", icon: Book },
