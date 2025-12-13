@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Tech Stack**:
 - **Backend**: Python 3.11+ monorepo with FastAPI, Celery workers, SQLAlchemy (async), PostgreSQL, Redis
-- **Document Parsing**: Docling (primary, with OCR via EasyOCR and VLM support) with PyMuPDF fallback, tiktoken for token counting
+- **Document Parsing**: UniversalExtractor → Docling (primary, with OCR via EasyOCR) → PyMuPDF fallback; tiktoken for token counting; LibreOffice for legacy formats (DOC, XLS, PPT, etc.)
 - **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui, Motion (framer-motion), React Query (requires Node.js 20.9+)
 
 ## Quick Start
@@ -89,14 +89,16 @@ make docker-run        # Run with Docker Compose (production config)
 
 **DocumentProcessor** (`packages/common/services/conversion/processor.py`):
 - Main entry point for document extraction
-- Uses Docling as primary extractor with PyMuPDF fallback
+- Lazy-loads extractor with fallback chain: UniversalExtractor → DoclingExtractor → PDFExtractor
 - Returns `ProcessingResult` with extracted text organized by pages
 
 **Extractor System** (`packages/common/services/conversion/extractors/`):
 - `BaseExtractor`: Abstract base class defining the extraction interface
+- `UniversalExtractor`: Routes to appropriate extractor based on file type, handles 50+ formats
 - `DoclingExtractor`: Primary extractor using Docling (PDF, DOCX, XLSX, HTML, images with OCR)
-- Specialized extractors: `PDFExtractor`, `SpreadsheetExtractor`, `TextExtractor`, `ImageExtractor`
+- `PDFExtractor`: PyMuPDF-based fallback for PDF files
 - All extractors return `ExtractionResult` with `ExtractedElement` list
+- LibreOffice conversion (`libreoffice.py`) for legacy formats (DOC, XLS, PPT, RTF, ODT)
 
 **ParserService** (`packages/common/services/conversion/parser_service.py`):
 - Chunking strategies: semantic (by structure) and fixed (by character count)
@@ -149,7 +151,7 @@ chunks = parser.chunk_elements(elements, strategy, chunk_size, overlap)
 ### Frontend State Management
 
 ```typescript
-// React Query hooks (hooks/use-documents.ts)
+// React Query hooks (src/hooks/use-documents.ts)
 const { data, isLoading } = useDocuments();
 const uploadMutation = useUploadFile();
 ```
@@ -166,6 +168,18 @@ const uploadMutation = useUploadFile();
 
 - Swagger UI: http://localhost:19000/docs
 - OpenAPI JSON: http://localhost:19000/openapi.json
+
+## Supported File Formats
+
+50+ formats supported via UniversalExtractor:
+- **Modern Office**: PDF, DOCX, XLSX, PPTX
+- **Legacy Office**: DOC, XLS, PPT, RTF, ODT, ODS, ODP (via LibreOffice)
+- **Markup**: HTML, Markdown, RST, ORG, AsciiDoc
+- **Email**: EML, MSG, P7S
+- **Ebooks**: EPUB
+- **Data**: CSV, TSV, JSON, XML, DBF, DIF
+- **Images**: PNG, JPG, TIFF, BMP, WEBP, GIF, HEIC (with OCR)
+- **Audio**: MP3, WAV, etc. (via ASR/whisper)
 
 ## Environment Variables
 

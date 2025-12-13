@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/contexts/auth-context";
+import { AuthError } from "@/lib/auth-api";
 
 // Custom SVG Icons - Matching landing page style
 function LogoMark({ className }: { className?: string }) {
@@ -82,6 +84,7 @@ function GitHubIcon({ className }: { className?: string }) {
 
 export default function SignupPage() {
   const router = useRouter();
+  const { signup } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -112,20 +115,24 @@ export default function SignupPage() {
 
     setIsLoading(true);
 
-    // Simulate signup - replace with actual auth logic
-    setTimeout(() => {
+    try {
+      await signup({ email, password, name: name || undefined });
+      // Redirect to OTP verification page immediately
+      router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
+    } catch (err) {
+      if (err instanceof AuthError) {
+        setError(err.message);
+      } else {
+        setError("An unexpected error occurred. Please try again.");
+      }
+    } finally {
       setIsLoading(false);
-      router.push("/upload");
-    }, 1500);
+    }
   };
 
+  // Social login placeholder - coming soon
   const handleSocialSignup = (provider: string) => {
-    setIsLoading(true);
-    // Simulate social signup - replace with actual OAuth logic
-    setTimeout(() => {
-      setIsLoading(false);
-      router.push("/upload");
-    }, 1500);
+    setError(`${provider} signup coming soon!`);
   };
 
   return (

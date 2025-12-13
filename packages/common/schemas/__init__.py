@@ -4,6 +4,19 @@ Schemas module for FileForge.
 Exports all Pydantic schemas.
 """
 
+from packages.common.schemas.auth import (
+    AuthErrorResponse,
+    LoginRequest,
+    LoginResponse,
+    LogoutResponse,
+    ResendVerificationRequest,
+    ResendVerificationResponse,
+    SignupRequest,
+    SignupResponse,
+    UserResponse,
+    VerifyEmailRequest,
+    VerifyEmailResponse,
+)
 from packages.common.schemas.convert import (
     BatchConvertRequest,
     BatchConvertResponse,
@@ -28,6 +41,18 @@ from packages.common.schemas.document import (
 
 
 __all__ = [
+    # Auth schemas
+    "SignupRequest",
+    "SignupResponse",
+    "LoginRequest",
+    "LoginResponse",
+    "LogoutResponse",
+    "UserResponse",
+    "VerifyEmailRequest",
+    "VerifyEmailResponse",
+    "ResendVerificationRequest",
+    "ResendVerificationResponse",
+    "AuthErrorResponse",
     # Convert schemas
     "ChunkStrategy",
     "ConvertRequest",

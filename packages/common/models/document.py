@@ -8,7 +8,7 @@ import enum
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
 
-from sqlalchemy import BigInteger, DateTime, Enum, String, Text
+from sqlalchemy import BigInteger, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,6 +17,7 @@ from packages.common.models.base import BaseModel
 
 if TYPE_CHECKING:
     from packages.common.models.chunk import Chunk
+    from packages.common.models.user import User
 
 
 class DocumentStatus(str, enum.Enum):
@@ -43,6 +44,14 @@ class Document(BaseModel):
     mime_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     file_size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     file_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+
+    # Owner (nullable for backward compatibility)
+    user_id: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     # Processing status
     status: Mapped[DocumentStatus] = mapped_column(
@@ -79,6 +88,7 @@ class Document(BaseModel):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+    user: Mapped[Optional["User"]] = relationship("User", back_populates="documents")
 
     def __repr__(self) -> str:
         return f"<Document(id={self.id}, filename='{self.filename}', status={self.status.value})>"

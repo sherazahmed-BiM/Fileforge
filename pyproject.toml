@@ -44,6 +44,8 @@ dependencies = [
     "unstructured[all-docs]>=0.16.0",
     # Chunking & Tokenization
     "tiktoken>=0.8.0",           # Token counting (OpenAI tokenizer)
+    # Authentication
+    "bcrypt>=4.0.0",             # Password hashing
     # Utilities
     "python-dotenv>=1.0.1",
     "python-multipart>=0.0.18",  # File uploads
@@ -62,6 +64,8 @@ dependencies = [
     "pillow-heif>=0.18.0",       # HEIC/HEIF image support
     "beautifulsoup4>=4.12.0",    # HTML parsing for email/epub
     "lxml>=5.0.0",               # XML/HTML parsing backend
+    "email-validator>=2.3.0",
+    "resend>=2.19.0",
 ]
 
 [dependency-groups]
