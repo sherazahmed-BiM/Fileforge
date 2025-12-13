@@ -23,6 +23,10 @@ export const API_CONFIG = {
     documentLLM: (id: number) => `/api/v1/documents/${id}/llm`,
     documentChunks: (id: number) => `/api/v1/documents/${id}/chunks`,
     documentReprocess: (id: number) => `/api/v1/documents/${id}/reprocess`,
+    // API Key endpoints
+    apiKeys: "/api/v1/api-keys",
+    apiKey: (id: number) => `/api/v1/api-keys/${id}`,
+    apiKeyRevoke: (id: number) => `/api/v1/api-keys/${id}/revoke`,
   },
 } as const;
 

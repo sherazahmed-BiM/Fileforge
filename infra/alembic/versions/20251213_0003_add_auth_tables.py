@@ -1,7 +1,7 @@
 """Add users and sessions tables for authentication
 
 Revision ID: 20251213_0003
-Revises: 20251211_0002
+Revises: 20251204_0001
 Create Date: 2025-12-13
 
 """
@@ -13,7 +13,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "20251213_0003"
-down_revision: Union[str, None] = "20251211_0002"
+down_revision: Union[str, None] = "20251204_0001"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

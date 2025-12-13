@@ -222,3 +222,47 @@ export function isCSVResponse(response: PDFExtractionResponse): response is CSVE
 export function isDocumentResponse(response: PDFExtractionResponse): response is DocumentExtractionResponse {
   return 'pages' in response && 'statistics' in response;
 }
+
+// API Key types
+export interface APIKey {
+  id: number;
+  name: string;
+  key_prefix: string;
+  is_active: boolean;
+  rate_limit_rpm: number;
+  rate_limit_rpd: number;
+  total_requests: number;
+  last_used_at: string | null;
+  expires_at: string | null;
+  created_at: string;
+}
+
+export interface CreateAPIKeyRequest {
+  name?: string;
+  rate_limit_rpm?: number;
+  rate_limit_rpd?: number;
+  expires_in_days?: number;
+}
+
+export interface CreateAPIKeyResponse {
+  id: number;
+  name: string;
+  key: string;  // Full key - only shown once!
+  key_prefix: string;
+  rate_limit_rpm: number;
+  rate_limit_rpd: number;
+  expires_at: string | null;
+  created_at: string;
+}
+
+export interface UpdateAPIKeyRequest {
+  name?: string;
+  is_active?: boolean;
+  rate_limit_rpm?: number;
+  rate_limit_rpd?: number;
+}
+
+export interface APIKeyListResponse {
+  items: APIKey[];
+  total: number;
+}

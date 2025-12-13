@@ -15,6 +15,7 @@ from packages.common.models.base import BaseModel
 
 
 if TYPE_CHECKING:
+    from packages.common.models.api_key import APIKey
     from packages.common.models.document import Document
     from packages.common.models.session import Session
 
@@ -68,6 +69,12 @@ class User(BaseModel):
     )
     sessions: Mapped[list["Session"]] = relationship(
         "Session",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    api_keys: Mapped[list["APIKey"]] = relationship(
+        "APIKey",
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="selectin",

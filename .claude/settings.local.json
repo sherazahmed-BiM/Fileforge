@@ -58,7 +58,10 @@
       "Bash(cmd /c \"dir .venv\\Scripts\\*.exe\")",
       "Bash(.venv/Scripts/python.exe:*)",
       "Bash(nvidia-smi:*)",
-      "Bash(uv pip install:*)"
+      "Bash(uv pip install:*)",
+      "Bash(if not exist \"C:\\Users\\DELL\\Desktop\\filefor\\Fileforge\\packages\\common\\middleware\" mkdir \"C:\\Users\\DELL\\Desktop\\filefor\\Fileforge\\packages\\common\\middleware\")",
+      "Bash(uv run alembic:*)",
+      "Bash(uv run uvicorn:*)"
     ],
     "deny": [],
     "ask": []
