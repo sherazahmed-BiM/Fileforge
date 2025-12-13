@@ -12,7 +12,9 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
+  Book,
 } from "lucide-react";
+import Link from "next/link";
 import { Header } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -132,10 +134,18 @@ export default function APIKeysPage() {
         title="API Keys"
         description="Manage your API keys for external integrations"
         actions={
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create API Key
-          </Button>
+          <div className="flex gap-2">
+            <Link href="/api-keys/docs">
+              <Button variant="outline">
+                <Book className="mr-2 h-4 w-4" />
+                View Docs
+              </Button>
+            </Link>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create API Key
+            </Button>
+          </div>
         }
       />
 

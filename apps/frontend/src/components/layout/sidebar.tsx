@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Key,
+  Book,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -31,6 +32,7 @@ const navItems: NavItem[] = [
   { href: "/", label: "Upload", icon: Upload },
   { href: "/documents", label: "Documents", icon: FileText },
   { href: "/api-keys", label: "API Keys", icon: Key },
+  { href: "/api-keys/docs", label: "API Docs", icon: Book },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
