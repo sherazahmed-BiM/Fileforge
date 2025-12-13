@@ -66,6 +66,9 @@ dependencies = [
     "lxml>=5.0.0",               # XML/HTML parsing backend
     "email-validator>=2.3.0",
     "resend>=2.19.0",
+    # PyTorch with CUDA support - pinned to specific CUDA-enabled versions
+    "torch==2.6.0+cu124",
+    "torchvision==0.21.0+cu124",
 ]
 
 [dependency-groups]
@@ -136,16 +139,16 @@ exclude_lines = [
 ]
 
 
-# PyTorch CPU-only configuration
-# This ensures torch is installed from the CPU-only index (no CUDA/nvidia deps)
+# PyTorch CUDA configuration
+# This ensures torch is installed with CUDA 12.4 support for GPU acceleration
 # See: https://docs.astral.sh/uv/guides/integration/pytorch/
 
 [[tool.uv.index]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
+name = "pytorch-cuda"
+url = "https://download.pytorch.org/whl/cu124"
 explicit = true
 
 [tool.uv.sources]
-# Force torch and related libs to use the CPU-only index
-torch = [{ index = "pytorch-cpu" }]
-torchvision = [{ index = "pytorch-cpu" }]
+# Force torch and related libs to use the CUDA index
+torch = [{ index = "pytorch-cuda" }]
+torchvision = [{ index = "pytorch-cuda" }]

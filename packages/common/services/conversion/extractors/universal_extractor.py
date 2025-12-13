@@ -20,6 +20,7 @@ method for optimal results.
 import base64
 import csv
 import email
+import os
 import shutil
 import tempfile
 from email import policy
@@ -27,6 +28,25 @@ from pathlib import Path
 from typing import Any
 
 from packages.common.core.logging import get_logger
+
+
+def _get_device() -> str:
+    """Get the appropriate device for ML models (cuda or cpu)."""
+    gpu_enabled = os.getenv("GPU_ENABLED", "false").lower() == "true"
+    if not gpu_enabled:
+        return "cpu"
+
+    try:
+        import torch
+        if torch.cuda.is_available():
+            device_id = os.getenv("CUDA_DEVICE", "0")
+            return f"cuda:{device_id}" if device_id != "0" else "cuda"
+    except ImportError:
+        pass
+
+    return "cpu"
+
+
 from packages.common.services.conversion.extractors.base import (
     BaseExtractor,
     ElementType,
@@ -1114,14 +1134,15 @@ Date: {headers['date']}
             else:
                 asr_options = model_map.get(whisper_model, asr_model_specs.WHISPER_BASE)
 
-            # Force CPU to avoid CUDA NaN issues, and set language to English
-            accelerator_options = AcceleratorOptions(device="cpu")
+            # Use GPU if available and enabled, otherwise CPU
+            device = _get_device()
+            accelerator_options = AcceleratorOptions(device=device)
             pipeline_options = AsrPipelineOptions(
                 asr_options=asr_options,
                 accelerator_options=accelerator_options,
             )
 
-            logger.info(f"Transcribing audio with Whisper ({whisper_model}) on CPU: {file_path.name}")
+            logger.info(f"Transcribing audio with Whisper ({whisper_model}) on {device.upper()}: {file_path.name}")
 
             converter = DocumentConverter(
                 format_options={
