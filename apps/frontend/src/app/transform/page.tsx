@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { FileSidebar } from "@/components/transform/file-sidebar";
 import { FilePreview } from "@/components/transform/file-preview";
 import { TextResultPanel } from "@/components/transform/text-result-panel";
@@ -23,15 +22,6 @@ function LogoMark({ className }: { className?: string }) {
   );
 }
 
-function CloseIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-      <line x1="18" y1="6" x2="6" y2="18" />
-      <line x1="6" y1="6" x2="18" y2="18" />
-    </svg>
-  );
-}
-
 function ArrowRightIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -49,7 +39,6 @@ interface FileItem {
 }
 
 export default function TransformPage() {
-  const router = useRouter();
   const [files, setFiles] = useState<FileItem[]>([]);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [result, setResult] = useState<PDFExtractionResponse | null>(null);
@@ -207,27 +196,15 @@ export default function TransformPage() {
     setError(`Sample file "${sampleName}" - Coming soon`);
   }, []);
 
-  const handleClose = () => {
-    router.push("/");
-  };
-
   return (
     <div className="h-screen flex flex-col bg-[#FAF8F5] overflow-hidden">
       {/* Top bar - matching landing page nav style */}
       <header className="h-16 flex items-center justify-between px-6 border-b-[2.5px] border-[#2C2C2C] bg-[#FAF8F5] shrink-0">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleClose}
-            className="h-10 w-10 rounded-xl neo-border bg-white hover:bg-[#F5F2ED] flex items-center justify-center transition-colors neo-shadow-sm"
-          >
-            <CloseIcon className="h-5 w-5 text-[#2C2C2C]" />
-          </button>
-          <div className="flex items-center gap-3">
-            <LogoMark className="w-10 h-10" />
-            <span className="text-xl font-display font-bold text-[#1A1A1A] tracking-tight">
-              Transform
-            </span>
-          </div>
+        <div className="flex items-center gap-3">
+          <LogoMark className="w-10 h-10" />
+          <span className="text-xl font-display font-bold text-[#1A1A1A] tracking-tight">
+            Transform
+          </span>
         </div>
         <button className="neo-btn bg-[#4A6B5A] text-white px-5 py-2.5 text-sm font-display font-semibold flex items-center gap-2 cursor-pointer">
           Edit in Workflow Editor

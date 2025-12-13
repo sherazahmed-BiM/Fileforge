@@ -45,7 +45,20 @@
       "Bash(git -C \"C:\\Users\\DELL\\Desktop\\filefor\\Fileforge\" push origin deploy)",
       "Bash(git -C \"C:\\Users\\DELL\\Desktop\\filefor\\Fileforge\" add packages/common/services/conversion/extractors/universal_extractor.py)",
       "Bash(git -C \"C:\\Users\\DELL\\Desktop\\filefor\\Fileforge\" commit -m \"$(cat <<''EOF''\nfix: Add PyMuPDF fallback for PDF extraction when Docling unavailable\n\n- Load PDFExtractor as fallback in UniversalExtractor\n- Use PyMuPDF for PDFs when Docling is not installed\n- Enables PDF processing on lightweight production builds\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(if not exist \"C:\\Users\\DELL\\Desktop\\filefor\\Fileforge\\packages\\common\\services\\auth\" mkdir \"C:\\Users\\DELL\\Desktop\\filefor\\Fileforge\\packages\\common\\services\\auth\")"
+      "Bash(if not exist \"C:\\Users\\DELL\\Desktop\\filefor\\Fileforge\\packages\\common\\services\\auth\" mkdir \"C:\\Users\\DELL\\Desktop\\filefor\\Fileforge\\packages\\common\\services\\auth\")",
+      "Bash(where:*)",
+      "Bash(uv python install:*)",
+      "Bash(uv sync:*)",
+      "Bash(\".venv312/Scripts/python.exe\" -m pip install bcrypt uvicorn fastapi sqlalchemy asyncpg redis celery python-multipart aiofiles pydantic pydantic-settings tiktoken alembic python-dotenv)",
+      "Bash(uv python:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(dir .venvScripts*.exe)",
+      "Bash(cmd /c \"dir .venv\\Scripts\\*.exe\")",
+      "Bash(.venv/Scripts/python.exe:*)",
+      "Bash(nvidia-smi:*)",
+      "Bash(uv pip install:*)"
     ],
     "deny": [],
     "ask": []

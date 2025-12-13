@@ -297,28 +297,16 @@ export default function UploadPage() {
     router.push("/transform");
   };
 
-  const handleClose = () => {
-    router.push("/");
-  };
-
   return (
     <ProtectedRoute>
     <div className="min-h-screen bg-[#FAF8F5] flex flex-col">
       {/* Header */}
       <header className="h-16 flex items-center justify-between px-6 border-b-[2.5px] border-[#2C2C2C] bg-[#FAF8F5] shrink-0">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleClose}
-            className="h-10 w-10 rounded-xl neo-border bg-white hover:bg-[#F5F2ED] flex items-center justify-center transition-colors neo-shadow-sm cursor-pointer"
-          >
-            <CloseIcon className="h-5 w-5 text-[#2C2C2C]" />
-          </button>
-          <div className="flex items-center gap-3">
-            <LogoMark className="w-10 h-10" />
-            <span className="text-xl font-display font-bold text-[#1A1A1A] tracking-tight">
-              Upload
-            </span>
-          </div>
+        <div className="flex items-center gap-3">
+          <LogoMark className="w-10 h-10" />
+          <span className="text-xl font-display font-bold text-[#1A1A1A] tracking-tight">
+            Upload
+          </span>
         </div>
 
         <div className="flex items-center gap-4">
