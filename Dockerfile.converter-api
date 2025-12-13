@@ -29,5 +29,5 @@ ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH="/app"
 ENV PYTHONUNBUFFERED=1
 
-# Run
-CMD uvicorn apps.converter_api.main:app --host 0.0.0.0 --port ${PORT:-19000}
+# Run - use shell form with explicit sh -c to prevent Railway override
+CMD ["/bin/sh", "-c", "exec uvicorn apps.converter_api.main:app --host 0.0.0.0 --port ${PORT:-19000}"]
